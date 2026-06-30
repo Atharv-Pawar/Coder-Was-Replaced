@@ -92,23 +92,25 @@ class TileMap:
 
 
 def load_office_map() -> TileMap:
-    """Build the Phase 1 placeholder office.
+    """Build the Phase 1/2 placeholder office.
 
     Layout legend:
         # = wall
         . = floor
         , = floor (alt, for a checkerboard look)
-        D = desk (solid, will become an interactable object later)
 
-    This will be replaced by `load_tmx("levels/office.tmx")` once a real
-    Tiled map exists, without changing any calling code.
+    Desks, coffee machines, and other furniture are no longer baked into
+    the tile grid -- they're placed as real interactable GameObjects
+    (see game/objects.py) so they can be walked up to and used. This
+    layout will be replaced by `load_tmx("levels/office.tmx")` once a
+    real Tiled map exists, without changing any calling code.
     """
     layout = [
         "##########################",
         "#........................#",
-        "#..D.D.D.....D.D.D.......#",
         "#........................#",
-        "#..D.D.D.....D.D.D.......#",
+        "#........................#",
+        "#........................#",
         "#........................#",
         "#........................#",
         "#....######....######....#",
@@ -116,7 +118,7 @@ def load_office_map() -> TileMap:
         "#....#....#....#....#....#",
         "#....######....######....#",
         "#........................#",
-        "#..D.D.D.....D.D.D.......#",
+        "#........................#",
         "#........................#",
         "##########################",
     ]
@@ -129,8 +131,6 @@ def load_office_map() -> TileMap:
         for x, ch in enumerate(row):
             if ch == "#":
                 tile_map.set_tile(x, y, TileType.WALL)
-            elif ch == "D":
-                tile_map.set_tile(x, y, TileType.DESK)
             else:
                 # checkerboard floor for a bit of visual texture
                 tile_type = TileType.FLOOR if (x + y) % 2 == 0 else TileType.FLOOR_ALT

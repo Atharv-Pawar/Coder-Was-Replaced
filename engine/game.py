@@ -8,6 +8,7 @@ from __future__ import annotations
 import pygame
 
 from engine import constants as c
+from engine.events import EventBus
 from engine.input import InputManager
 from engine.renderer import Renderer
 from game.office import Office
@@ -22,6 +23,7 @@ class Game:
         self.renderer = Renderer()
         self.input = InputManager()
         self.clock = pygame.time.Clock()
+        self.events = EventBus()
 
         self.office = Office()
 
@@ -52,7 +54,8 @@ class Game:
             self.input.process_event(event)
 
     def _update(self, dt: float) -> None:
-        self.office.update(dt, self.input)
+        self.office.update(dt, self.input, self.events)
+        self.events.update(dt)
 
         self._fps_samples.append(self.clock.get_fps())
         if len(self._fps_samples) > 30:
@@ -61,6 +64,8 @@ class Game:
     def _draw(self) -> None:
         self.renderer.begin_frame()
         self.office.draw(self.renderer)
+        self.renderer.draw_energy_bar(self.office.robot.energy_ratio)
+        self.renderer.draw_toasts(self.events.toasts)
 
         if self.input.debug_overlay_visible:
             self._draw_debug_overlay()
@@ -75,6 +80,7 @@ class Game:
             f"Tile: ({robot.grid_x}, {robot.grid_y})",
             f"Facing: {robot.facing}",
             f"Moving: {robot.is_moving}",
-            "F3: toggle overlay  |  ESC: quit",
+            f"Energy: {robot.energy:.0f}/{c.PLAYER_MAX_ENERGY:.0f}",
+            "F3: toggle overlay | E: interact | ESC: quit",
         ]
         self.renderer.draw_debug_overlay(lines)

@@ -13,7 +13,6 @@ from __future__ import annotations
 
 from engine import constants as c
 from engine.animation import Vec2Tween
-from engine.tilemap import TileMap
 
 
 class Robot:
@@ -25,7 +24,7 @@ class Robot:
         self._tween: Vec2Tween | None = None
 
         # Stats that will matter once economy/missions land (Phase 5+).
-        self.energy: float = 100.0
+        self.energy: float = c.PLAYER_MAX_ENERGY
 
     @property
     def is_moving(self) -> bool:
@@ -49,10 +48,15 @@ class Robot:
             if self._tween.done:
                 self._tween = None
 
-    def try_move(self, dx: int, dy: int, tile_map: TileMap) -> bool:
+    def try_move(self, dx: int, dy: int, is_walkable) -> bool:
         """Attempt to step one tile in the given direction.
 
-        Always updates facing (so bumping into a wall still turns the
+        `is_walkable` is a callable(grid_x, grid_y) -> bool, so the caller
+        (Office) can combine tilemap collision with object collision
+        (desks, servers, etc.) without this class needing to know about
+        objects at all.
+
+        Always updates facing (so bumping into something still turns the
         robot to face it, mirroring `turn_left()/turn_right()` semantics
         used later by the scripting engine). Returns True if the robot
         actually moved.
@@ -63,7 +67,7 @@ class Robot:
             return False
 
         target_x, target_y = self.grid_x + dx, self.grid_y + dy
-        if not tile_map.is_walkable(target_x, target_y):
+        if not is_walkable(target_x, target_y):
             return False
 
         start_pixel = self._grid_to_pixel(self.grid_x, self.grid_y)
@@ -72,6 +76,15 @@ class Robot:
 
         self.grid_x, self.grid_y = target_x, target_y
         return True
+
+    @property
+    def facing_tile(self) -> tuple[int, int]:
+        """Grid coordinate of the tile directly in front of the robot."""
+        return self.grid_x + self.facing[0], self.grid_y + self.facing[1]
+
+    @property
+    def energy_ratio(self) -> float:
+        return max(0.0, min(1.0, self.energy / c.PLAYER_MAX_ENERGY))
 
     @staticmethod
     def _grid_to_pixel(grid_x: int, grid_y: int) -> tuple[float, float]:

@@ -114,3 +114,117 @@ class Renderer:
 
         for i, line in enumerate(lines):
             self.draw_text(line, 8 + padding, 8 + padding + i * line_height)
+
+    def draw_object(self, camera: Camera, obj) -> None:
+        """Draws a Phase-2 placeholder office object: a colored shape with
+        a short text label, distinct per ObjectType. Will be replaced by
+        real sprites once art assets exist.
+        """
+        from game.objects import ObjectType  # local import avoids a cycle
+
+        if obj.consumed:
+            return
+
+        ts = c.TILE_SIZE
+        screen_x, screen_y = camera.world_to_screen(obj.grid_x * ts, obj.grid_y * ts)
+        rect = pygame.Rect(int(screen_x) + 3, int(screen_y) + 3, ts - 6, ts - 6)
+
+        colors = {
+            ObjectType.DESK: c.COLOR_OBJ_DESK,
+            ObjectType.COFFEE_MACHINE: c.COLOR_OBJ_COFFEE,
+            ObjectType.BUG: c.COLOR_OBJ_BUG,
+            ObjectType.JIRA_TICKET: c.COLOR_OBJ_JIRA,
+            ObjectType.SERVER_RACK: c.COLOR_OBJ_SERVER,
+            ObjectType.GIT_REPO: c.COLOR_OBJ_GIT,
+            ObjectType.WIFI_ROUTER: c.COLOR_OBJ_ROUTER,
+            ObjectType.MEETING_ROOM: c.COLOR_OBJ_MEETING_DOOR,
+            ObjectType.LAPTOP: c.COLOR_OBJ_LAPTOP,
+        }
+        color = colors.get(obj.obj_type, c.COLOR_OBJ_DESK)
+
+        if obj.obj_type == ObjectType.BUG:
+            # Small diamond instead of a square so bugs read as "pick-ups".
+            cx, cy = rect.center
+            half = rect.width // 2
+            points = [(cx, cy - half), (cx + half, cy), (cx, cy + half), (cx - half, cy)]
+            pygame.draw.polygon(self.surface, color, points)
+        else:
+            pygame.draw.rect(self.surface, color, rect, border_radius=5)
+
+        if obj.obj_type == ObjectType.SERVER_RACK:
+            pygame.draw.circle(self.surface, c.COLOR_OBJ_SERVER_LIGHT, rect.center, 4)
+        elif obj.obj_type == ObjectType.WIFI_ROUTER:
+            pygame.draw.circle(self.surface, c.COLOR_OBJ_ROUTER_LIGHT, (rect.centerx, rect.top + 4), 3)
+        elif obj.obj_type == ObjectType.COFFEE_MACHINE:
+            pygame.draw.rect(
+                self.surface, c.COLOR_OBJ_COFFEE_ACCENT,
+                pygame.Rect(rect.centerx - 5, rect.bottom - 9, 10, 6),
+            )
+
+        from game.objects import OBJECT_LABELS
+        label = OBJECT_LABELS.get(obj.obj_type, "")
+        if label:
+            label_surf = self.debug_font.render(label, True, (255, 255, 255))
+            label_rect = label_surf.get_rect(center=rect.center)
+            self.surface.blit(label_surf, label_rect)
+
+    def draw_interaction_prompt(self, camera: Camera, grid_x: int, grid_y: int, text: str) -> None:
+        ts = c.TILE_SIZE
+        screen_x, screen_y = camera.world_to_screen(grid_x * ts, grid_y * ts)
+
+        label_surf = self.debug_font.render(text, True, c.COLOR_INTERACT_PROMPT_TEXT)
+        padding = 4
+        bg_rect = pygame.Rect(
+            int(screen_x) - padding,
+            int(screen_y) - label_surf.get_height() - padding * 2,
+            label_surf.get_width() + padding * 2,
+            label_surf.get_height() + padding * 2,
+        )
+        bg = pygame.Surface(bg_rect.size, pygame.SRCALPHA)
+        bg.fill((*c.COLOR_INTERACT_PROMPT_BG, 180))
+        self.surface.blit(bg, bg_rect.topleft)
+        self.surface.blit(label_surf, (bg_rect.x + padding, bg_rect.y + padding))
+
+    def draw_toasts(self, toasts: list) -> None:
+        """Draws active toast notifications stacked above the bottom edge,
+        most recent at the bottom, fading in/out per `Toast.alpha`.
+        """
+        spacing = 4
+        bottom_margin = 24
+        y = c.SCREEN_HEIGHT - bottom_margin
+
+        for toast in reversed(toasts):
+            text_surf = self.debug_font.render(toast.text, True, c.COLOR_TOAST_TEXT)
+            padding = 8
+            box_w = text_surf.get_width() + padding * 2
+            box_h = text_surf.get_height() + padding * 2
+            x = (c.SCREEN_WIDTH - box_w) // 2
+            y -= box_h
+
+            alpha = int(220 * toast.alpha)
+            box = pygame.Surface((box_w, box_h), pygame.SRCALPHA)
+            box.fill((*c.COLOR_TOAST_BG, min(200, alpha)))
+            self.surface.blit(box, (x, y))
+
+            text_with_alpha = text_surf.copy()
+            text_with_alpha.set_alpha(alpha)
+            self.surface.blit(text_with_alpha, (x + padding, y + padding))
+
+            y -= spacing
+
+    def draw_energy_bar(self, ratio: float) -> None:
+        bar_w, bar_h = 160, 14
+        x = c.SCREEN_WIDTH - bar_w - 12
+        y = 12
+
+        bg_rect = pygame.Rect(x, y, bar_w, bar_h)
+        pygame.draw.rect(self.surface, (30, 30, 36), bg_rect, border_radius=4)
+
+        fill_w = int(bar_w * max(0.0, min(1.0, ratio)))
+        if fill_w > 0:
+            fill_color = (90, 200, 120) if ratio > 0.3 else (210, 90, 70)
+            fill_rect = pygame.Rect(x, y, fill_w, bar_h)
+            pygame.draw.rect(self.surface, fill_color, fill_rect, border_radius=4)
+
+        pygame.draw.rect(self.surface, (10, 10, 14), bg_rect, width=2, border_radius=4)
+        self.draw_text("Energy", x, y + bar_h + 2, color=(180, 180, 190))

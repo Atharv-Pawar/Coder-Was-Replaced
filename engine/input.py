@@ -65,3 +65,7 @@ class InputManager:
         if self.was_pressed(pygame.K_RIGHT) or self.was_pressed(pygame.K_d):
             return 1, 0
         return None
+
+    def interact_pressed(self) -> bool:
+        """E or Space triggers interaction with whatever the robot faces."""
+        return self.was_pressed(pygame.K_e) or self.was_pressed(pygame.K_SPACE)

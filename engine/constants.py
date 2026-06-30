@@ -73,3 +73,35 @@ LEVELS_DIR = "levels"
 # Debug
 # ----------------------------------------------------------------------------
 DEBUG_FONT_SIZE = 16
+
+# ----------------------------------------------------------------------------
+# Office Objects (Phase 2)
+# ----------------------------------------------------------------------------
+INTERACT_RANGE_TILES = 1  # how close (in tiles) the robot must be to interact
+
+# Object colors, keyed by ObjectType name (see game/objects.py)
+COLOR_OBJ_DESK = (96, 70, 48)
+COLOR_OBJ_COFFEE = (60, 36, 20)
+COLOR_OBJ_COFFEE_ACCENT = (220, 170, 60)
+COLOR_OBJ_BUG = (200, 60, 60)
+COLOR_OBJ_JIRA = (50, 110, 200)
+COLOR_OBJ_SERVER = (40, 40, 50)
+COLOR_OBJ_SERVER_LIGHT = (80, 220, 120)
+COLOR_OBJ_GIT = (240, 130, 40)
+COLOR_OBJ_ROUTER = (90, 90, 110)
+COLOR_OBJ_ROUTER_LIGHT = (90, 200, 220)
+COLOR_OBJ_MEETING_DOOR = (140, 100, 60)
+COLOR_OBJ_LAPTOP = (210, 210, 220)
+
+COLOR_INTERACT_PROMPT_BG = (0, 0, 0)
+COLOR_INTERACT_PROMPT_TEXT = (255, 230, 140)
+COLOR_TOAST_BG = (0, 0, 0)
+COLOR_TOAST_TEXT = (230, 230, 240)
+
+# Player stats
+PLAYER_MAX_ENERGY = 100.0
+COFFEE_ENERGY_RESTORE = 20.0
+
+# Toast notifications
+TOAST_DURATION = 2.2  # seconds visible
+TOAST_FADE = 0.4  # seconds of fade in/out at start/end

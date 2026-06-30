@@ -8,21 +8,25 @@ An original automation/idle game inspired by the gameplay mechanics of
 *The Farmer Was Replaced*, *Human Resource Machine*, and *shapez* — built
 from scratch with Pygame, in clean, testable phases.
 
-## Status: Phase 1 — Engine Foundation ✅
+## Status: Phase 2 — Office World ✅
 
-This milestone establishes the core engine that every later feature
-builds on:
+Phase 1 built the engine. Phase 2 fills the office with real,
+interactable furniture:
 
-- Fixed-timestep game loop at 60 FPS, decoupled from rendering
-- Logical-resolution renderer that scales cleanly to any window size
-- Grid-based tilemap with collision (`engine/tilemap.py`) — currently a
-  procedural placeholder office; will be swapped for real Tiled (`.tmx`)
-  maps via `pytmx` once art assets exist
-- Smooth tile-to-tile movement with easing (`engine/animation.py`)
-- Camera that follows the player with smoothing and clamps to map bounds
-- Keyboard input manager (arrow keys / WASD to move, F3 debug overlay,
-  Esc to quit)
-- On-screen debug overlay (FPS, tile position, facing, movement state)
+- `game/objects.py`: a `GameObject` system (desk, laptop, coffee
+  machine, bug, jira ticket, server rack, git repo, wifi router,
+  meeting room door), each with its own collision behavior and a
+  unique interaction effect
+- Combined tilemap + object collision (`Office.is_walkable`) — desks,
+  servers, etc. block movement just like walls
+- Interaction: face an object and press **E** (or Space). A context
+  prompt ("[E] Coffee Machine") appears automatically when in range
+- `engine/events.py`: a toast notification queue for feedback
+  ("+20 energy (coffee)", "Bug fixed!")
+- An energy stat on the robot, restored by the coffee machine, shown
+  via an on-screen energy bar
+- Objects render as distinct colored shapes/labels for now — same
+  swap-in plan as the tilemap once real sprite art exists
 
 ## Running it
 
@@ -36,6 +40,7 @@ python main.py
 | Key | Action |
 |---|---|
 | Arrow keys / WASD | Move the robot |
+| **E** / Space | Interact with the object you're facing |
 | F3 | Toggle debug overlay |
 | Esc | Quit |
 
@@ -54,10 +59,11 @@ Coder-Was-Replaced/
 │   └── constants.py       # All tunable values live here
 ├── game/                  # Game-specific content
 │   ├── player.py          # The AI robot entity
-│   └── office.py          # Ties map + robot + camera together
+│   ├── objects.py         # Interactable office furniture (desk, coffee, bug, ...)
+│   └── office.py          # Ties map + objects + robot + camera together
 ├── assets/                # Sprites, tiles, UI, fonts, sounds, music
 ├── levels/                # Will hold real .tmx maps (Phase 2+)
-├── scripts/               # Where player-written automation code will live (Phase 3)
+├── scripts/                # Where player-written automation code will live (Phase 3)
 ├── data/                  # JSON config (items, upgrades) — Phase 4+
 └── tests/                 # Unit tests
 ```
@@ -67,7 +73,7 @@ Coder-Was-Replaced/
 | Phase | Focus |
 |---|---|
 | 1 ✅ | Engine foundation: window, loop, renderer, camera, tilemap, input |
-| 2 | Office world: real objects (desk, coffee, printer, server, AI robot sprite) |
+| 2 ✅ | Office world: real objects (desk, coffee, printer, server, AI robot sprite) |
 | 3 | Python scripting engine: write code, watch the robot execute it step by step |
 | 4 | Unlock system for functions (`fix_bug()`, `commit()`, `deploy()`, ...) |
 | 5 | Economy: salary, experience, reputation, coffee, compute credits, git stars |
