@@ -41,12 +41,23 @@ class Renderer:
     # -- frame lifecycle ---------------------------------------------------
     def begin_frame(self) -> None:
         self.surface.fill(c.COLOR_BG)
+        # Clip all world rendering to the game panel area.
+        self._game_clip = pygame.Rect(c.GAME_VIEWPORT_X, 0,
+                                      c.GAME_VIEWPORT_W, c.GAME_VIEWPORT_H)
 
     def present(self) -> None:
         window_w, window_h = self.window.get_size()
         scaled = pygame.transform.smoothscale(self.surface, (window_w, window_h))
         self.window.blit(scaled, (0, 0))
         pygame.display.flip()
+
+    def begin_world_draw(self) -> None:
+        """Call before drawing any world content to apply the game-panel clip."""
+        self.surface.set_clip(self._game_clip)
+
+    def end_world_draw(self) -> None:
+        """Call after world drawing to restore full-surface clip."""
+        self.surface.set_clip(None)
 
     def handle_resize(self, width: int, height: int) -> None:
         self.window = pygame.display.set_mode((width, height), pygame.RESIZABLE)
@@ -102,18 +113,18 @@ class Renderer:
         surf = self.debug_font.render(text, True, color)
         self.surface.blit(surf, (x, y))
 
-    def draw_debug_overlay(self, lines: list[str]) -> None:
+    def draw_debug_overlay(self, lines: list[str], x_offset: int = 0) -> None:
         padding = 6
         line_height = c.DEBUG_FONT_SIZE + 2
-        box_width = 260
+        box_width = 310
         box_height = padding * 2 + line_height * len(lines)
 
         overlay = pygame.Surface((box_width, box_height), pygame.SRCALPHA)
         overlay.fill((*c.COLOR_DEBUG_BG, 150))
-        self.surface.blit(overlay, (8, 8))
+        self.surface.blit(overlay, (8 + x_offset, 8))
 
         for i, line in enumerate(lines):
-            self.draw_text(line, 8 + padding, 8 + padding + i * line_height)
+            self.draw_text(line, 8 + x_offset + padding, 8 + padding + i * line_height)
 
     def draw_object(self, camera: Camera, obj) -> None:
         """Draws a Phase-2 placeholder office object: a colored shape with
@@ -188,9 +199,12 @@ class Renderer:
     def draw_toasts(self, toasts: list) -> None:
         """Draws active toast notifications stacked above the bottom edge,
         most recent at the bottom, fading in/out per `Toast.alpha`.
+        Positions are offset to stay within the game viewport panel.
         """
         spacing = 4
         bottom_margin = 24
+        gx = c.GAME_VIEWPORT_X
+        gw = c.GAME_VIEWPORT_W
         y = c.SCREEN_HEIGHT - bottom_margin
 
         for toast in reversed(toasts):
@@ -198,7 +212,7 @@ class Renderer:
             padding = 8
             box_w = text_surf.get_width() + padding * 2
             box_h = text_surf.get_height() + padding * 2
-            x = (c.SCREEN_WIDTH - box_w) // 2
+            x = gx + (gw - box_w) // 2
             y -= box_h
 
             alpha = int(220 * toast.alpha)
@@ -213,8 +227,8 @@ class Renderer:
             y -= spacing
 
     def draw_energy_bar(self, ratio: float) -> None:
-        bar_w, bar_h = 160, 14
-        x = c.SCREEN_WIDTH - bar_w - 12
+        bar_w, bar_h = 140, 14
+        x = c.SCREEN_WIDTH - bar_w - 12   # right edge of full screen
         y = 12
 
         bg_rect = pygame.Rect(x, y, bar_w, bar_h)

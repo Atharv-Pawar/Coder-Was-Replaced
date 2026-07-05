@@ -21,7 +21,11 @@ class Office:
         self.robot = Robot(grid_x=12, grid_y=5)
         self.objects: list[GameObject] = self._build_objects()
 
-        self.camera = Camera(c.SCREEN_WIDTH, c.SCREEN_HEIGHT)
+        self.camera = Camera(
+            viewport_width=c.GAME_VIEWPORT_W,
+            viewport_height=c.GAME_VIEWPORT_H,
+            viewport_x=c.GAME_VIEWPORT_X,
+        )
         self.camera.set_bounds(self.tile_map.pixel_width, self.tile_map.pixel_height)
         self.camera.snap_to(*self.robot.center_pixel_pos)
 
@@ -106,6 +110,7 @@ class Office:
 
     # -- draw -----------------------------------------------------------
     def draw(self, renderer: Renderer) -> None:
+        renderer.begin_world_draw()
         renderer.draw_tilemap(self.tile_map, self.camera)
 
         for obj in self.objects:
@@ -128,3 +133,4 @@ class Office:
                 self.camera, facing_obj.grid_x, facing_obj.grid_y,
                 f"[E] {facing_obj.display_name}",
             )
+        renderer.end_world_draw()

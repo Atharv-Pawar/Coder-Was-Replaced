@@ -105,3 +105,53 @@ COFFEE_ENERGY_RESTORE = 20.0
 # Toast notifications
 TOAST_DURATION = 2.2  # seconds visible
 TOAST_FADE = 0.4  # seconds of fade in/out at start/end
+
+# ----------------------------------------------------------------------------
+# Script Editor (Phase 3)
+# ----------------------------------------------------------------------------
+EDITOR_PANEL_WIDTH = 490       # left panel width in logical pixels
+EDITOR_FONT_SIZE = 15          # monospace code font size
+EDITOR_LINE_HEIGHT = 20        # pixels per code line
+EDITOR_LINE_NUM_WIDTH = 36     # width of the line-number gutter
+EDITOR_TOP_BAR_HEIGHT = 38     # header bar (title + buttons)
+EDITOR_STATUS_BAR_HEIGHT = 28  # bottom status/error bar
+
+# Editor color palette
+COLOR_EDITOR_BG = (22, 24, 30)
+COLOR_EDITOR_GUTTER = (30, 32, 40)
+COLOR_EDITOR_GUTTER_TEXT = (80, 90, 100)
+COLOR_EDITOR_CURSOR = (220, 220, 220)
+COLOR_EDITOR_CURSOR_LINE = (35, 38, 48)
+COLOR_EDITOR_ACTIVE_LINE = (42, 46, 60)  # currently executing line
+COLOR_EDITOR_PANEL_BORDER = (50, 55, 70)
+COLOR_EDITOR_STATUS_BG = (18, 20, 26)
+COLOR_EDITOR_STATUS_OK = (100, 200, 140)
+COLOR_EDITOR_STATUS_ERR = (210, 80, 80)
+COLOR_EDITOR_STATUS_RUN = (80, 180, 220)
+
+# Syntax highlight colors
+COLOR_SYN_DEFAULT = (210, 215, 220)
+COLOR_SYN_KEYWORD = (200, 140, 255)
+COLOR_SYN_ENGINE_FN = (100, 210, 255)
+COLOR_SYN_STRING = (155, 210, 110)
+COLOR_SYN_COMMENT = (100, 110, 130)
+COLOR_SYN_NUMBER = (255, 200, 100)
+COLOR_SYN_CONSTANT = (255, 160, 90)  # BUG, COFFEE, WALL, EMPTY, ...
+COLOR_SYN_BUILTIN = (180, 210, 180)
+
+# Toolbar button colors
+COLOR_BTN_RUN = (50, 180, 100)
+COLOR_BTN_RUN_HOVER = (70, 210, 120)
+COLOR_BTN_STOP = (200, 70, 60)
+COLOR_BTN_STOP_HOVER = (220, 90, 80)
+COLOR_BTN_INACTIVE = (55, 60, 75)
+COLOR_BTN_TEXT = (240, 240, 245)
+
+# Game viewport sits to the right of the editor panel
+GAME_VIEWPORT_X = EDITOR_PANEL_WIDTH
+GAME_VIEWPORT_W = SCREEN_WIDTH - EDITOR_PANEL_WIDTH
+GAME_VIEWPORT_H = SCREEN_HEIGHT
+
+# Scripting execution timing
+SCRIPT_STEP_DELAY_DEFAULT = 0.0    # extra pause after each animation (seconds)
+SCRIPT_TURN_DISPLAY_TIME = 0.12    # seconds the robot is "shown" mid-turn

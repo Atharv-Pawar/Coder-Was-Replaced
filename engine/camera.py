@@ -5,6 +5,11 @@ The camera tracks a world-space target position (e.g. the player) with
 exponential smoothing, and is clamped so it never shows outside the map
 bounds. It exposes helpers to convert world <-> screen coordinates, which
 every renderer call should go through.
+
+In Phase 3 the game world renders only in the right portion of the screen
+(to the right of the script editor panel). The `viewport_x` offset
+accounts for this: world_to_screen() adds it automatically so all
+renderer calls remain unchanged.
 """
 
 from __future__ import annotations
@@ -13,9 +18,11 @@ from engine import constants as c
 
 
 class Camera:
-    def __init__(self, viewport_width: int, viewport_height: int):
+    def __init__(self, viewport_width: int, viewport_height: int,
+                 viewport_x: int = 0):
         self.viewport_width = viewport_width
         self.viewport_height = viewport_height
+        self.viewport_x = viewport_x  # left edge of the game panel on screen
 
         # Top-left corner of the camera in world pixels (float for smoothing).
         self.x = 0.0
@@ -53,7 +60,7 @@ class Camera:
 
     # -- coordinate helpers ----------------------------------------------
     def world_to_screen(self, world_x: float, world_y: float) -> tuple[float, float]:
-        return world_x - self.x, world_y - self.y
+        return world_x - self.x + self.viewport_x, world_y - self.y
 
     def screen_to_world(self, screen_x: float, screen_y: float) -> tuple[float, float]:
-        return screen_x + self.x, screen_y + self.y
+        return screen_x + self.x - self.viewport_x, screen_y + self.y

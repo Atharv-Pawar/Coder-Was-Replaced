@@ -1,1 +1,6 @@
+# Core
 pygame-ce>=2.5.0
+
+# Phase 8 (not yet required):
+# pytmx>=3.32       -- Tiled .tmx map loading
+# pygame-gui>=0.6   -- Optional advanced UI widgets
