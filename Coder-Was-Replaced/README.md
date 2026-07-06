@@ -152,16 +152,16 @@ Coder-Was-Replaced/
 
 ```
 ┌──────────────────────┬─────────────────────────────────┐
-│   SCRIPT EDITOR      │                                 │
-│   490 px             │   GAME WORLD  790 px            │
-│                      │                                 │
-│  [Run F5] [Stop F6]  │   tile map + objects + robot    │
-│  1 │ while True:     │   camera follows robot          │
-│  2 │     if look()   │   energy bar + toast HUD        │
-│  3 │         fix_bug │                                 │
-│  ► │ ← executing     │                                 │
-│    │                 │                                 │
-│  Status / error bar  │                                 │
+│   SCRIPT EDITOR      │                                  │
+│   490 px             │   GAME WORLD  790 px             │
+│                      │                                  │
+│  [Run F5] [Stop F6]  │   tile map + objects + robot     │
+│  1 │ while True:     │   camera follows robot           │
+│  2 │     if look()   │   energy bar + toast HUD         │
+│  3 │         fix_bug │                                  │
+│  ► │ ← executing     │                                  │
+│    │                 │                                  │
+│  Status / error bar  │                                  │
 └──────────────────────┴─────────────────────────────────┘
 ```
 
