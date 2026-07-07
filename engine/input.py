@@ -69,3 +69,15 @@ class InputManager:
     def interact_pressed(self) -> bool:
         """E or Space triggers interaction with whatever the robot faces."""
         return self.was_pressed(pygame.K_e) or self.was_pressed(pygame.K_SPACE)
+
+    def shop_toggle_pressed(self) -> bool:
+        return self.was_pressed(pygame.K_TAB)
+
+    def buy_item_index(self) -> int | None:
+        """Returns 0-based index of number key 1-9 pressed this frame, or None."""
+        for i, key in enumerate([pygame.K_1, pygame.K_2, pygame.K_3,
+                                  pygame.K_4, pygame.K_5, pygame.K_6,
+                                  pygame.K_7, pygame.K_8, pygame.K_9]):
+            if self.was_pressed(key):
+                return i
+        return None

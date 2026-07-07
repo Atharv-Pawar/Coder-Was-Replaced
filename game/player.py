@@ -25,6 +25,7 @@ class Robot:
 
         # Stats that will matter once economy/missions land (Phase 5+).
         self.energy: float = c.PLAYER_MAX_ENERGY
+        self.move_duration: float = c.PLAYER_MOVE_DURATION   # upgradeable
 
     @property
     def is_moving(self) -> bool:
@@ -72,7 +73,7 @@ class Robot:
 
         start_pixel = self._grid_to_pixel(self.grid_x, self.grid_y)
         end_pixel = self._grid_to_pixel(target_x, target_y)
-        self._tween = Vec2Tween(start=start_pixel, end=end_pixel, duration=c.PLAYER_MOVE_DURATION)
+        self._tween = Vec2Tween(start=start_pixel, end=end_pixel, duration=self.move_duration)
 
         self.grid_x, self.grid_y = target_x, target_y
         return True

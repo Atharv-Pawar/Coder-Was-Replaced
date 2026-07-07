@@ -19,6 +19,7 @@ from engine.events import EventBus
 from engine.input import InputManager
 from engine.renderer import Renderer
 from engine.scripting import ScriptEngine
+from game.economy import Economy, SHOP_ITEMS
 from game.editor import Editor
 from game.office import Office
 from game.progression import Progression
@@ -29,7 +30,7 @@ class Game:
         pygame.init()
         pygame.display.init()
         pygame.font.init()
-        pygame.key.start_text_input()  # enable TEXTINPUT events for the editor
+        pygame.key.start_text_input()
 
         self.renderer = Renderer()
         self.input = InputManager()
@@ -38,10 +39,14 @@ class Game:
 
         self.office = Office()
         self.progression = Progression()
+        self.economy = Economy()
         self.editor = Editor()
-        self.script_engine = ScriptEngine(self.office, self.events, self.progression)
+        self.script_engine = ScriptEngine(
+            self.office, self.events, self.progression, self.economy
+        )
 
         self._running = False
+        self._shop_open = False
         self._fps_samples: list[float] = []
 
     def run(self) -> None:
@@ -77,16 +82,27 @@ class Game:
 
     # ── update ───────────────────────────────────────────────────────────
     def _update(self, dt: float) -> None:
+        # Shop toggle (Tab)
+        if self.input.shop_toggle_pressed():
+            self._shop_open = not self._shop_open
+
+        # Shop purchases when overlay is open (number keys 1-6)
+        if self._shop_open:
+            idx = self.input.buy_item_index()
+            if idx is not None and idx < len(SHOP_ITEMS):
+                ok, msg = self.economy.buy(SHOP_ITEMS[idx].item_id, self.events)
+                if not ok:
+                    self.events.notify(msg)
+
         # Manual robot control only when the script engine is idle.
         if not self.script_engine.is_running:
             self.office.update(dt, self.input, self.events)
         else:
-            # Office still updates the camera and robot animation even when
-            # the script drives the robot; we just skip keyboard movement.
             self.office.robot.update(dt)
             self.office.camera.update(dt, *self.office.robot.center_pixel_pos)
 
         self.script_engine.update(dt)
+        self.economy.update(dt, self.progression, self.events)
         self.events.update(dt)
         self.editor.update(dt, self.script_engine, self.progression)
 
@@ -98,8 +114,9 @@ class Game:
     def _draw(self) -> None:
         self.renderer.begin_frame()
 
-        # Left panel: editor
-        self.editor.draw(self.renderer.surface, self.script_engine, self.progression)
+        # Left panel: editor (with economy section)
+        self.editor.draw(self.renderer.surface, self.script_engine,
+                         self.progression, self.economy)
 
         # Right panel: game world
         self.office.draw(self.renderer)
@@ -109,6 +126,10 @@ class Game:
 
         if self.input.debug_overlay_visible:
             self._draw_debug_overlay()
+
+        # Shop overlay drawn last so it sits on top of everything
+        if self._shop_open:
+            self.renderer.draw_shop_overlay(self.economy, self.progression)
 
         self.renderer.present()
 
@@ -124,7 +145,8 @@ class Game:
             f"Energy: {robot.energy:.0f}/{c.PLAYER_MAX_ENERGY:.0f}",
             f"Script: {'running' if engine.is_running else 'idle'}",
             f"XP: {self.progression.xp}  |  {self.progression.level.title}",
-            "F3: overlay | F5: run | F6: stop | ESC: quit",
+            f"$ {self.economy.salary}  Rep:{self.economy.reputation}  Stars:{self.economy.git_stars}",
+            "F3:overlay F5:run F6:stop TAB:shop ESC:quit",
         ]
         # Draw overlay inside the game panel (offset by GAME_VIEWPORT_X)
         self.renderer.draw_debug_overlay(lines, x_offset=c.GAME_VIEWPORT_X)

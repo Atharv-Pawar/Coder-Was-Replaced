@@ -113,6 +113,82 @@ class Renderer:
         surf = self.debug_font.render(text, True, color)
         self.surface.blit(surf, (x, y))
 
+    def draw_shop_overlay(self, economy, progression) -> None:
+        """Full-screen shop overlay drawn on top of everything when Tab is open."""
+        from game.economy import SHOP_ITEMS
+
+        # Dim the whole screen
+        dim = pygame.Surface((c.SCREEN_WIDTH, c.SCREEN_HEIGHT), pygame.SRCALPHA)
+        dim.fill((0, 0, 0, 160))
+        self.surface.blit(dim, (0, 0))
+
+        # Shop window dimensions
+        shop_w = 560
+        item_h = 64
+        n_items = len(SHOP_ITEMS)
+        shop_h = 60 + item_h * n_items + 20
+        sx = (c.SCREEN_WIDTH - shop_w) // 2
+        sy = max(20, (c.SCREEN_HEIGHT - shop_h) // 2)
+
+        # Background
+        bg = pygame.Surface((shop_w, shop_h), pygame.SRCALPHA)
+        bg.fill((*c.COLOR_SHOP_BG, 245))
+        self.surface.blit(bg, (sx, sy))
+        pygame.draw.rect(self.surface, c.COLOR_SHOP_BORDER,
+                         pygame.Rect(sx, sy, shop_w, shop_h), width=2, border_radius=8)
+
+        # Title row
+        title_surf = self.debug_font.render("SHOP", True, c.COLOR_SHOP_TITLE)
+        self.surface.blit(title_surf, (sx + 14, sy + 10))
+        bal_text = f"Balance: ${economy.salary}"
+        bal_surf = self.debug_font.render(bal_text, True, c.COLOR_SALARY)
+        self.surface.blit(bal_surf, (sx + shop_w - bal_surf.get_width() - 14, sy + 10))
+        hint_surf = self.debug_font.render("[TAB] close  |  [1-6] buy", True,
+                                           (100, 110, 140))
+        self.surface.blit(hint_surf,
+                          (sx + (shop_w - hint_surf.get_width()) // 2, sy + 28))
+        pygame.draw.line(self.surface, c.COLOR_SHOP_BORDER,
+                         (sx, sy + 46), (sx + shop_w, sy + 46))
+
+        # Items
+        for idx, item in enumerate(SHOP_ITEMS):
+            iy = sy + 50 + idx * item_h
+            owned = economy.has_upgrade(item.item_id)
+            affordable = economy.can_afford(item.item_id) and not owned
+
+            # Row background
+            row_color = ((*c.COLOR_SHOP_ITEM_BG, 200) if not owned
+                         else (30, 60, 40, 200))
+            row_bg = pygame.Surface((shop_w - 4, item_h - 4), pygame.SRCALPHA)
+            row_bg.fill(row_color)
+            self.surface.blit(row_bg, (sx + 2, iy + 2))
+
+            # Key hint
+            key_surf = self.debug_font.render(f"[{idx+1}]", True,
+                                              (180, 190, 210) if not owned else c.COLOR_SHOP_OWNED)
+            self.surface.blit(key_surf, (sx + 10, iy + 10))
+
+            # Item name
+            name_color = (c.COLOR_SHOP_OWNED if owned
+                          else (200, 215, 240))
+            name_surf = self.debug_font.render(item.name, True, name_color)
+            self.surface.blit(name_surf, (sx + 46, iy + 8))
+
+            # Description / effect
+            desc_surf = self.debug_font.render(item.effect_line, True, (130, 140, 160))
+            self.surface.blit(desc_surf, (sx + 46, iy + 28))
+
+            # Cost / status (right-aligned)
+            if owned:
+                status_surf = self.debug_font.render("OWNED", True, c.COLOR_SHOP_OWNED)
+                self.surface.blit(status_surf,
+                                  (sx + shop_w - status_surf.get_width() - 14, iy + 18))
+            else:
+                cost_color = (c.COLOR_SHOP_AFFORD if affordable else c.COLOR_SHOP_CANT)
+                cost_surf = self.debug_font.render(f"${item.cost_salary}", True, cost_color)
+                self.surface.blit(cost_surf,
+                                  (sx + shop_w - cost_surf.get_width() - 14, iy + 18))
+
     def draw_debug_overlay(self, lines: list[str], x_offset: int = 0) -> None:
         padding = 6
         line_height = c.DEBUG_FONT_SIZE + 2

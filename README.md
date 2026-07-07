@@ -10,9 +10,9 @@ Pygame, in clean, testable phases.
 
 ---
 
-## Status: Phase 4 — Unlock System ✅
+## Status: Phase 5 — Economy ✅
 
-Phases 1–4 are fully complete and running at 60 FPS on Windows/Linux/macOS.
+Phases 1–5 are fully complete and running at 60 FPS on Windows/Linux/macOS.
 
 ---
 
@@ -196,8 +196,9 @@ object collision are always consistent.
 | 2 | Office world: objects, collision, interaction, energy bar, toasts | ✅ Done |
 | 3 | Python scripting engine: editor, syntax highlighting, step execution | ✅ Done |
 | 4 | Unlock system: XP gating, level ladder, progress panel, new actions | ✅ Done |
-| 5 | Economy: salary, reputation, git stars, compute credits | 🔜 Next |
-| 6 | Missions: fix bugs, deploy, close tickets, survive Monday | ⏳ |
+| 5 | Economy: salary, reputation, git stars, compute credits, shop | ✅ Done |
+
+| 6 | Missions: fix bugs, deploy, close tickets, survive Monday | 🔜 Next |
 | 7 | AI employees: hire interns → architects, assign them scripts | ⏳ |
 | 8 | Procedural offices + real Tiled `.tmx` maps | ⏳ |
 | 9 | Steam polish: audio, achievements, settings, controller, packaging | ⏳ |

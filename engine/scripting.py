@@ -74,6 +74,11 @@ from game.progression import (
     XP_FIX_BUG, XP_COFFEE, XP_COMMIT, XP_DEPLOY,
     XP_RUN_TESTS, XP_ANSWER_EMAIL, XP_REFACTOR,
 )
+# Import economy award dicts
+from game.economy import (
+    AWARD_FIX_BUG, AWARD_COFFEE, AWARD_COMMIT, AWARD_DEPLOY,
+    AWARD_RUN_TESTS, AWARD_ANSWER_EMAIL, AWARD_REFACTOR,
+)
 
 # Facing rotation tables (screen-space, y increases downward)
 _TURN_RIGHT = {
@@ -97,11 +102,12 @@ class ScriptStopped(BaseException):
 class ScriptEngine:
     """Manages script execution, threading, and per-step robot control."""
 
-    def __init__(self, office, event_bus, progression=None):
+    def __init__(self, office, event_bus, progression=None, economy=None):
         self._office = office
         self._robot = office.robot
         self._event_bus = event_bus
         self._progression = progression   # may be None in tests
+        self._economy = economy           # may be None in tests
 
         # --- inter-thread communication -----------------------------------
         # Slot for one pending command from script → main thread.
@@ -172,6 +178,8 @@ class ScriptEngine:
         if not self.is_running:
             return
 
+        self._apply_upgrade_effects()
+
         # --- phase 1: brief turn display pause ----------------------------
         if self._turn_timer > 0:
             self._turn_timer -= dt
@@ -228,6 +236,18 @@ class ScriptEngine:
         if self._progression is not None:
             self._progression.add_xp(amount, self._event_bus)
 
+    def _award_economy(self, **currencies) -> None:
+        if self._economy is not None:
+            self._economy.award(self._event_bus, **currencies)
+
+    def _apply_upgrade_effects(self) -> None:
+        """Sync economy upgrade effects to game state each frame."""
+        if self._economy is None:
+            return
+        self._robot.move_duration = (
+            c.PLAYER_MOVE_DURATION * self._economy.move_duration_multiplier()
+        )
+
     def _dispatch(self, cmd: tuple) -> None:
         name = cmd[0]
 
@@ -258,15 +278,19 @@ class ScriptEngine:
         elif name == "look":
             if self._check_locked("look"):
                 return
-            fx, fy = self._robot.facing_tile
-            if not self._office.tile_map.is_walkable(fx, fy):
-                self._look_result = WALL
-            else:
+            look_range = self._economy.look_range() if self._economy else 1
+            result = EMPTY
+            for dist in range(1, look_range + 1):
+                fx = self._robot.grid_x + self._robot.facing[0] * dist
+                fy = self._robot.grid_y + self._robot.facing[1] * dist
+                if not self._office.tile_map.is_walkable(fx, fy):
+                    result = WALL
+                    break
                 obj = self._office.object_at(fx, fy)
                 if obj is not None:
-                    self._look_result = _OBJ_TO_CONST.get(obj.obj_type, EMPTY)
-                else:
-                    self._look_result = EMPTY
+                    result = _OBJ_TO_CONST.get(obj.obj_type, EMPTY)
+                    break
+            self._look_result = result
             self._finish_step()
 
         elif name == "fix_bug":
@@ -277,6 +301,7 @@ class ScriptEngine:
             if obj is not None and obj.obj_type == _OT.BUG and not obj.consumed:
                 obj.interact(self._robot, self._event_bus)
                 self._award_xp(XP_FIX_BUG)
+                self._award_economy(**AWARD_FIX_BUG)
             self._finish_step()
 
         elif name == "drink_coffee":
@@ -285,8 +310,14 @@ class ScriptEngine:
             fx, fy = self._robot.facing_tile
             obj = self._office.object_at(fx, fy)
             if obj is not None and obj.obj_type == _OT.COFFEE_MACHINE:
-                obj.interact(self._robot, self._event_bus)
+                restore = (self._economy.coffee_energy_restore()
+                           if self._economy else c.COFFEE_ENERGY_RESTORE)
+                before = self._robot.energy
+                self._robot.energy = min(c.PLAYER_MAX_ENERGY, self._robot.energy + restore)
+                gained = self._robot.energy - before
+                self._event_bus.notify(f"+{gained:.0f} energy (coffee)")
                 self._award_xp(XP_COFFEE)
+                self._award_economy(**AWARD_COFFEE)
             self._finish_step()
 
         elif name == "commit":
@@ -297,6 +328,7 @@ class ScriptEngine:
             if obj is not None and obj.obj_type == _OT.GIT_REPO:
                 obj.interact(self._robot, self._event_bus)
                 self._award_xp(XP_COMMIT)
+                self._award_economy(**AWARD_COMMIT)
             self._finish_step()
 
         elif name == "deploy":
@@ -307,6 +339,7 @@ class ScriptEngine:
             if obj is not None and obj.obj_type == _OT.SERVER_RACK:
                 obj.interact(self._robot, self._event_bus)
                 self._award_xp(XP_DEPLOY)
+                self._award_economy(**AWARD_DEPLOY)
             self._finish_step()
 
         elif name == "run_tests":
@@ -314,13 +347,15 @@ class ScriptEngine:
                 return
             self._event_bus.notify("Tests: all passing")
             self._award_xp(XP_RUN_TESTS)
+            self._award_economy(**AWARD_RUN_TESTS)
             self._finish_step()
 
         elif name == "answer_email":
             if self._check_locked("answer_email"):
                 return
-            self._event_bus.notify("Email answered (+15 reputation)")
+            self._event_bus.notify("Email answered")
             self._award_xp(XP_ANSWER_EMAIL)
+            self._award_economy(**AWARD_ANSWER_EMAIL)
             self._finish_step()
 
         elif name == "refactor":
@@ -328,6 +363,7 @@ class ScriptEngine:
                 return
             self._event_bus.notify("Code refactored")
             self._award_xp(XP_REFACTOR)
+            self._award_economy(**AWARD_REFACTOR)
             self._finish_step()
 
         else:

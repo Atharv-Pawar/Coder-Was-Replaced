@@ -150,3 +150,53 @@ All notable changes to *Coder Was Replaced* by phase.
 - Exponential-smoothing camera, bounded to map edges
 - Arrow key / WASD movement; F3 debug overlay; Esc quit
 - Debug overlay: FPS, tile position, facing, movement state
+---
+
+## Phase 5 — Economy ✅
+
+**New files**
+- `game/economy.py` — Economy class: 5 currencies, passive salary tick,
+  6 shop items with real mechanical upgrade effects
+
+**Changed files**
+- `engine/scripting.py` — awards economy currencies on every action;
+  `_apply_upgrade_effects()` syncs upgrade effects (move speed, coffee
+  restore, look range) to game state each frame; accepts `economy=`
+- `game/player.py` — `move_duration` is now an instance variable so
+  the Standing Desk upgrade can reduce it at runtime
+- `game/editor.py` — Economy panel (60 px, 2-row) below the progression
+  panel: salary, rep, git stars, coffee count, compute credits, salary
+  tick progress bar, "[TAB] Shop" hint
+- `engine/renderer.py` — `draw_shop_overlay()`: full-screen dimmed shop
+  overlay with 6 items, affordability-colored costs, OWNED badges
+- `engine/game.py` — instantiates Economy; Tab toggles shop; number
+  keys 1-6 buy items when shop is open; economy wired into update/draw
+- `engine/input.py` — `shop_toggle_pressed()`, `buy_item_index()`
+- `engine/constants.py` — economy colors, tick interval, shop palette,
+  ECONOMY_PANEL_HEIGHT
+
+**Currencies**
+
+| Icon | Currency | Earned by |
+|---|---|---|
+| $ | Salary | Passive tick (level-scaled) + task bonuses |
+| Rep | Reputation | Fixing bugs, deploying, emails, refactoring |
+| ★ | Git Stars | Committing and deploying |
+| ☕ | Coffee count | drink_coffee() calls |
+| CPU | Compute credits | deploy(), run_tests(), refactor() |
+
+**Shop items (4 active in Phase 5)**
+
+| Item | Cost | Effect |
+|---|---|---|
+| Better Coffee Machine | $50 | Coffee restores 40 energy (was 20) |
+| Standing Desk | $120 | Robot moves 25% faster |
+| Mechanical Keyboard | $250 | Script executes 25% faster |
+| AI Code Assistant | $600 | look() sees 2 tiles ahead |
+| CI/CD Pipeline | $1,200 | (Phase 6 teaser) |
+| Cloud Servers | $3,000 | (Phase 6 teaser) |
+
+**Controls added**
+- **Tab** — open/close shop overlay
+- **1–6** (while shop open) — buy item
+

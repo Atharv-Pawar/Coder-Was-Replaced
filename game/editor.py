@@ -188,7 +188,8 @@ class Editor:
 
     @property
     def _code_h(self) -> int:
-        return c.SCREEN_HEIGHT - self.TOP - self.BOTTOM - c.PROGRESS_PANEL_HEIGHT
+        return (c.SCREEN_HEIGHT - self.TOP - self.BOTTOM
+                - c.PROGRESS_PANEL_HEIGHT - c.ECONOMY_PANEL_HEIGHT)
 
     @property
     def _visible_lines(self) -> int:
@@ -260,7 +261,8 @@ class Editor:
         return self._SPEED_LABELS[self._speed_index]
 
     # ── rendering ─────────────────────────────────────────────────────────
-    def draw(self, surface: pygame.Surface, script_engine=None, progression=None) -> None:
+    def draw(self, surface: pygame.Surface, script_engine=None,
+             progression=None, economy=None) -> None:
         # Background.
         pygame.draw.rect(surface, c.COLOR_EDITOR_BG,
                          pygame.Rect(0, 0, self.W, c.SCREEN_HEIGHT))
@@ -268,6 +270,7 @@ class Editor:
         self._draw_top_bar(surface, script_engine)
         self._draw_code_area(surface, script_engine)
         self._draw_progress_panel(surface, progression)
+        self._draw_economy_panel(surface, economy)
         self._draw_status_bar(surface, script_engine)
 
         # Right border dividing editor from game.
@@ -419,6 +422,52 @@ class Editor:
             hint_surf = self.status_font.render(
                 "All functions unlocked!", True, c.COLOR_UNLOCKED_FN)
         surface.blit(hint_surf, (pad_x, hint_y))
+
+    def _draw_economy_panel(self, surface: pygame.Surface, economy) -> None:
+        panel_y = self._code_y + self._code_h + c.PROGRESS_PANEL_HEIGHT
+        ph = c.ECONOMY_PANEL_HEIGHT
+
+        pygame.draw.rect(surface, (20, 22, 30),
+                         pygame.Rect(0, panel_y, self.W, ph))
+        pygame.draw.line(surface, c.COLOR_PROGRESS_DIVIDER,
+                         (0, panel_y), (self.W, panel_y), 1)
+
+        if economy is None:
+            return
+
+        pad_x, pad_y = 8, panel_y + 7
+
+        # ── Row 1: Salary + Reputation + Git Stars ───────────────────────
+        def _currency(label, val, color, x, y):
+            lbl = self.status_font.render(f"{label}: ", True, (140, 145, 160))
+            val_s = self.status_font.render(str(val), True, color)
+            surface.blit(lbl, (x, y))
+            surface.blit(val_s, (x + lbl.get_width(), y))
+            return x + lbl.get_width() + val_s.get_width() + 12
+
+        col = pad_x
+        col = _currency("$", economy.salary, c.COLOR_SALARY, col, pad_y)
+        col = _currency("Rep", economy.reputation, c.COLOR_REP, col, pad_y)
+        col = _currency("Stars", economy.git_stars, c.COLOR_STARS, col, pad_y)
+
+        # ── Row 2: Coffee + Compute + Tick bar ───────────────────────────
+        row2_y = pad_y + self.LH + 1
+        col2 = pad_x
+        col2 = _currency("Coffee", economy.coffee_count, c.COLOR_COFFEE_C, col2, row2_y)
+        col2 = _currency("CPU", economy.compute_credits, c.COLOR_COMPUTE, col2, row2_y)
+
+        # Salary tick progress bar
+        tick_w = self.W - col2 - pad_x - 4
+        if tick_w > 20:
+            bar_rect = pygame.Rect(col2, row2_y + 3, tick_w, 8)
+            pygame.draw.rect(surface, c.COLOR_XP_BAR_BG, bar_rect, border_radius=3)
+            fill_w = max(0, int(tick_w * economy.tick_progress))
+            if fill_w > 0:
+                pygame.draw.rect(surface, c.COLOR_SALARY,
+                                 pygame.Rect(col2, row2_y + 3, fill_w, 8), border_radius=3)
+            # "next salary" label
+            hint = self.status_font.render("[TAB] Shop", True, (100, 110, 140))
+            surface.blit(hint, (col2, row2_y + 13))
 
     def _draw_status_bar(self, surface: pygame.Surface, engine) -> None:
         bar_y = c.SCREEN_HEIGHT - self.BOTTOM

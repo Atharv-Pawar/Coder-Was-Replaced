@@ -180,3 +180,33 @@ COLOR_UNLOCK_TOAST  = (120, 255, 160)   # toast color for new unlocks
 
 # In-panel divider
 COLOR_PROGRESS_DIVIDER = (40, 44, 56)
+
+# ----------------------------------------------------------------------------
+# Economy (Phase 5)
+# ----------------------------------------------------------------------------
+ECONOMY_TICK_INTERVAL = 8.0   # seconds between passive salary ticks
+
+ECONOMY_PANEL_HEIGHT  = 60    # px below the progression panel
+
+# Currency icon colors
+COLOR_SALARY   = (255, 215, 80)    # gold
+COLOR_REP      = (100, 200, 255)   # sky blue
+COLOR_STARS    = (255, 180, 60)    # amber
+COLOR_COFFEE_C = (180, 120, 70)    # brown
+COLOR_COMPUTE  = (140, 230, 200)   # teal
+
+# Economy HUD strip at bottom of game panel
+ECONOMY_HUD_HEIGHT = 26
+COLOR_ECONOMY_HUD_BG = (16, 18, 24)
+
+# Shop overlay
+COLOR_SHOP_BG      = (18, 20, 28)
+COLOR_SHOP_BORDER  = (70, 80, 110)
+COLOR_SHOP_TITLE   = (200, 215, 255)
+COLOR_SHOP_ITEM_BG = (28, 32, 44)
+COLOR_SHOP_ITEM_HOVER = (38, 44, 62)
+COLOR_SHOP_OWNED   = (60, 180, 100)
+COLOR_SHOP_LOCKED  = (90, 95, 110)
+COLOR_SHOP_COST    = (255, 215, 80)
+COLOR_SHOP_AFFORD  = (100, 215, 140)
+COLOR_SHOP_CANT    = (180, 80, 70)
