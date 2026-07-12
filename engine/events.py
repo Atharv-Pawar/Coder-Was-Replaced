@@ -1,17 +1,6 @@
-"""
-Lightweight event/notification system.
-
-Phase 2 just needs a way to show short-lived "toast" messages when the
-player interacts with something ("+20 energy", "Bug fixed!"). This same
-queue will later carry structured game events (mission complete, level
-up) once missions/economy exist, so other systems can subscribe without
-the renderer needing to know about them directly.
-"""
-
+"""Toast notification queue."""
 from __future__ import annotations
-
-from dataclasses import dataclass, field
-
+from dataclasses import dataclass
 from engine import constants as c
 
 
@@ -30,7 +19,6 @@ class Toast:
 
     @property
     def alpha(self) -> float:
-        """0..1 opacity, fading in then out."""
         fade = c.TOAST_FADE
         if self.elapsed < fade:
             return self.elapsed / fade
@@ -40,15 +28,13 @@ class Toast:
 
 
 class EventBus:
-    """Holds active toast notifications and any future structured events."""
-
     def __init__(self):
         self.toasts: list[Toast] = []
 
-    def notify(self, text: str) -> None:
-        self.toasts.append(Toast(text=text))
+    def notify(self, text: str, duration: float = c.TOAST_DURATION) -> None:
+        self.toasts.append(Toast(text=text, duration=duration))
 
     def update(self, dt: float) -> None:
-        for toast in self.toasts:
-            toast.update(dt)
+        for t in self.toasts:
+            t.update(dt)
         self.toasts = [t for t in self.toasts if not t.done]

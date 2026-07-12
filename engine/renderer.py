@@ -1,351 +1,289 @@
-"""
-Renderer.
-
-Owns the actual OS window and the logical "virtual" surface the game
-draws to. We render everything at a fixed logical resolution
-(constants.SCREEN_WIDTH x SCREEN_HEIGHT) and then scale that surface up
-to whatever the real window size is. This means gameplay code never has
-to worry about the user resizing the window or running on a different
-monitor DPI.
-"""
-
+"""Renderer — owns the window and all draw calls for Phases 1-6."""
 from __future__ import annotations
-
 import pygame
-
 from engine import constants as c
 from engine.camera import Camera
 from engine.tilemap import TileMap, TileType
 
 _TILE_COLORS = {
-    TileType.FLOOR: c.COLOR_FLOOR,
+    TileType.FLOOR:     c.COLOR_FLOOR,
     TileType.FLOOR_ALT: c.COLOR_FLOOR_ALT,
-    TileType.WALL: c.COLOR_WALL,
-    TileType.DESK: c.COLOR_DESK,
+    TileType.WALL:      c.COLOR_WALL,
 }
 
 
 class Renderer:
     def __init__(self):
         pygame.display.set_caption(c.WINDOW_TITLE)
-        self.window = pygame.display.set_mode(
-            (c.SCREEN_WIDTH, c.SCREEN_HEIGHT), pygame.RESIZABLE
-        )
-        # Logical surface we actually draw to; gets scaled to self.window.
+        self.window  = pygame.display.set_mode((c.SCREEN_WIDTH, c.SCREEN_HEIGHT), pygame.RESIZABLE)
         self.surface = pygame.Surface((c.SCREEN_WIDTH, c.SCREEN_HEIGHT))
+        self.debug_font = pygame.font.SysFont("consolas", c.DEBUG_FONT_SIZE) or pygame.font.Font(None, c.DEBUG_FONT_SIZE)
+        self._game_clip = pygame.Rect(c.GAME_VIEWPORT_X, 0, c.GAME_VIEWPORT_W, c.GAME_VIEWPORT_H)
 
-        self.debug_font = pygame.font.SysFont("consolas", c.DEBUG_FONT_SIZE)
-        if self.debug_font is None:
-            self.debug_font = pygame.font.Font(None, c.DEBUG_FONT_SIZE)
-
-    # -- frame lifecycle ---------------------------------------------------
+    # ── Frame lifecycle ───────────────────────────────────────────────────────
     def begin_frame(self) -> None:
         self.surface.fill(c.COLOR_BG)
-        # Clip all world rendering to the game panel area.
-        self._game_clip = pygame.Rect(c.GAME_VIEWPORT_X, 0,
-                                      c.GAME_VIEWPORT_W, c.GAME_VIEWPORT_H)
+        self._game_clip = pygame.Rect(c.GAME_VIEWPORT_X, 0, c.GAME_VIEWPORT_W, c.GAME_VIEWPORT_H)
 
     def present(self) -> None:
-        window_w, window_h = self.window.get_size()
-        scaled = pygame.transform.smoothscale(self.surface, (window_w, window_h))
-        self.window.blit(scaled, (0, 0))
+        ww, wh = self.window.get_size()
+        self.window.blit(pygame.transform.smoothscale(self.surface, (ww, wh)), (0, 0))
         pygame.display.flip()
 
+    def handle_resize(self, w: int, h: int) -> None:
+        self.window = pygame.display.set_mode((w, h), pygame.RESIZABLE)
+
     def begin_world_draw(self) -> None:
-        """Call before drawing any world content to apply the game-panel clip."""
         self.surface.set_clip(self._game_clip)
 
     def end_world_draw(self) -> None:
-        """Call after world drawing to restore full-surface clip."""
         self.surface.set_clip(None)
 
-    def handle_resize(self, width: int, height: int) -> None:
-        self.window = pygame.display.set_mode((width, height), pygame.RESIZABLE)
-
-    # -- world rendering -----------------------------------------------
+    # ── World rendering ───────────────────────────────────────────────────────
     def draw_tilemap(self, tile_map: TileMap, camera: Camera) -> None:
         ts = tile_map.tile_size
-
-        # Only draw the tiles actually visible in the viewport (basic culling).
-        first_col = max(0, int(camera.x // ts))
-        first_row = max(0, int(camera.y // ts))
-        last_col = min(tile_map.width, int((camera.x + camera.viewport_width) // ts) + 1)
-        last_row = min(tile_map.height, int((camera.y + camera.viewport_height) // ts) + 1)
-
-        for y in range(first_row, last_row):
-            for x in range(first_col, last_col):
-                tile = tile_map.get_tile(x, y)
-                color = _TILE_COLORS.get(tile.tile_type, c.COLOR_FLOOR)
-                screen_x, screen_y = camera.world_to_screen(x * ts, y * ts)
-                rect = pygame.Rect(int(screen_x), int(screen_y), ts, ts)
+        fc = max(0, int(camera.x // ts))
+        fr = max(0, int(camera.y // ts))
+        lc = min(tile_map.width,  int((camera.x + camera.viewport_width)  // ts) + 1)
+        lr = min(tile_map.height, int((camera.y + camera.viewport_height) // ts) + 1)
+        for y in range(fr, lr):
+            for x in range(fc, lc):
+                color = _TILE_COLORS.get(tile_map.get_tile(x, y).tile_type, c.COLOR_FLOOR)
+                sx, sy = camera.world_to_screen(x * ts, y * ts)
+                rect = pygame.Rect(int(sx), int(sy), ts, ts)
                 pygame.draw.rect(self.surface, color, rect)
                 pygame.draw.rect(self.surface, c.COLOR_GRID, rect, width=1)
 
-    def draw_entity_rect(
-        self,
-        camera: Camera,
-        world_x: float,
-        world_y: float,
-        size: int,
-        color: tuple[int, int, int],
-        outline: tuple[int, int, int] | None = None,
-        facing: tuple[int, int] | None = None,
-    ) -> None:
-        """Draws a Phase-1 placeholder entity (a colored square) at a world
-        pixel position, plus a small triangle indicating facing direction.
-        """
-        screen_x, screen_y = camera.world_to_screen(world_x, world_y)
-        rect = pygame.Rect(int(screen_x), int(screen_y), size, size)
+    def draw_entity_rect(self, camera, wx, wy, size, color, outline=None, facing=None) -> None:
+        sx, sy = camera.world_to_screen(wx, wy)
+        rect = pygame.Rect(int(sx), int(sy), size, size)
         pygame.draw.rect(self.surface, color, rect, border_radius=4)
         if outline:
             pygame.draw.rect(self.surface, outline, rect, width=2, border_radius=4)
-
         if facing:
             cx, cy = rect.center
             dx, dy = facing
-            tip = (cx + dx * size * 0.4, cy + dy * size * 0.4)
-            left = (cx - dy * size * 0.2 - dx * size * 0.1, cy + dx * size * 0.2 - dy * size * 0.1)
+            tip   = (cx + dx * size * 0.4,  cy + dy * size * 0.4)
+            left  = (cx - dy * size * 0.2 - dx * size * 0.1, cy + dx * size * 0.2 - dy * size * 0.1)
             right = (cx + dy * size * 0.2 - dx * size * 0.1, cy - dx * size * 0.2 - dy * size * 0.1)
             pygame.draw.polygon(self.surface, outline or (20, 20, 20), [tip, left, right])
 
-    # -- UI / debug ------------------------------------------------------
-    def draw_text(self, text: str, x: int, y: int, color=c.COLOR_DEBUG_TEXT) -> None:
-        surf = self.debug_font.render(text, True, color)
-        self.surface.blit(surf, (x, y))
-
-    def draw_shop_overlay(self, economy, progression) -> None:
-        """Full-screen shop overlay drawn on top of everything when Tab is open."""
-        from game.economy import SHOP_ITEMS
-
-        # Dim the whole screen
-        dim = pygame.Surface((c.SCREEN_WIDTH, c.SCREEN_HEIGHT), pygame.SRCALPHA)
-        dim.fill((0, 0, 0, 160))
-        self.surface.blit(dim, (0, 0))
-
-        # Shop window dimensions
-        shop_w = 560
-        item_h = 64
-        n_items = len(SHOP_ITEMS)
-        shop_h = 60 + item_h * n_items + 20
-        sx = (c.SCREEN_WIDTH - shop_w) // 2
-        sy = max(20, (c.SCREEN_HEIGHT - shop_h) // 2)
-
-        # Background
-        bg = pygame.Surface((shop_w, shop_h), pygame.SRCALPHA)
-        bg.fill((*c.COLOR_SHOP_BG, 245))
-        self.surface.blit(bg, (sx, sy))
-        pygame.draw.rect(self.surface, c.COLOR_SHOP_BORDER,
-                         pygame.Rect(sx, sy, shop_w, shop_h), width=2, border_radius=8)
-
-        # Title row
-        title_surf = self.debug_font.render("SHOP", True, c.COLOR_SHOP_TITLE)
-        self.surface.blit(title_surf, (sx + 14, sy + 10))
-        bal_text = f"Balance: ${economy.salary}"
-        bal_surf = self.debug_font.render(bal_text, True, c.COLOR_SALARY)
-        self.surface.blit(bal_surf, (sx + shop_w - bal_surf.get_width() - 14, sy + 10))
-        hint_surf = self.debug_font.render("[TAB] close  |  [1-6] buy", True,
-                                           (100, 110, 140))
-        self.surface.blit(hint_surf,
-                          (sx + (shop_w - hint_surf.get_width()) // 2, sy + 28))
-        pygame.draw.line(self.surface, c.COLOR_SHOP_BORDER,
-                         (sx, sy + 46), (sx + shop_w, sy + 46))
-
-        # Items
-        for idx, item in enumerate(SHOP_ITEMS):
-            iy = sy + 50 + idx * item_h
-            owned = economy.has_upgrade(item.item_id)
-            affordable = economy.can_afford(item.item_id) and not owned
-
-            # Row background
-            row_color = ((*c.COLOR_SHOP_ITEM_BG, 200) if not owned
-                         else (30, 60, 40, 200))
-            row_bg = pygame.Surface((shop_w - 4, item_h - 4), pygame.SRCALPHA)
-            row_bg.fill(row_color)
-            self.surface.blit(row_bg, (sx + 2, iy + 2))
-
-            # Key hint
-            key_surf = self.debug_font.render(f"[{idx+1}]", True,
-                                              (180, 190, 210) if not owned else c.COLOR_SHOP_OWNED)
-            self.surface.blit(key_surf, (sx + 10, iy + 10))
-
-            # Item name
-            name_color = (c.COLOR_SHOP_OWNED if owned
-                          else (200, 215, 240))
-            name_surf = self.debug_font.render(item.name, True, name_color)
-            self.surface.blit(name_surf, (sx + 46, iy + 8))
-
-            # Description / effect
-            desc_surf = self.debug_font.render(item.effect_line, True, (130, 140, 160))
-            self.surface.blit(desc_surf, (sx + 46, iy + 28))
-
-            # Cost / status (right-aligned)
-            if owned:
-                status_surf = self.debug_font.render("OWNED", True, c.COLOR_SHOP_OWNED)
-                self.surface.blit(status_surf,
-                                  (sx + shop_w - status_surf.get_width() - 14, iy + 18))
-            else:
-                cost_color = (c.COLOR_SHOP_AFFORD if affordable else c.COLOR_SHOP_CANT)
-                cost_surf = self.debug_font.render(f"${item.cost_salary}", True, cost_color)
-                self.surface.blit(cost_surf,
-                                  (sx + shop_w - cost_surf.get_width() - 14, iy + 18))
-
-    def draw_debug_overlay(self, lines: list[str], x_offset: int = 0) -> None:
-        padding = 6
-        line_height = c.DEBUG_FONT_SIZE + 2
-        box_width = 310
-        box_height = padding * 2 + line_height * len(lines)
-
-        overlay = pygame.Surface((box_width, box_height), pygame.SRCALPHA)
-        overlay.fill((*c.COLOR_DEBUG_BG, 150))
-        self.surface.blit(overlay, (8 + x_offset, 8))
-
-        for i, line in enumerate(lines):
-            self.draw_text(line, 8 + x_offset + padding, 8 + padding + i * line_height)
-
     def draw_object(self, camera: Camera, obj) -> None:
-        """Draws a Phase-2 placeholder office object: a colored shape with
-        a short text label, distinct per ObjectType. Will be replaced by
-        real sprites once art assets exist.
-        """
-        from game.objects import ObjectType  # local import avoids a cycle
-
+        from game.objects import ObjectType, OBJECT_LABELS
         if obj.consumed:
             return
-
         ts = c.TILE_SIZE
-        screen_x, screen_y = camera.world_to_screen(obj.grid_x * ts, obj.grid_y * ts)
-        rect = pygame.Rect(int(screen_x) + 3, int(screen_y) + 3, ts - 6, ts - 6)
-
-        colors = {
-            ObjectType.DESK: c.COLOR_OBJ_DESK,
-            ObjectType.COFFEE_MACHINE: c.COLOR_OBJ_COFFEE,
-            ObjectType.BUG: c.COLOR_OBJ_BUG,
-            ObjectType.JIRA_TICKET: c.COLOR_OBJ_JIRA,
-            ObjectType.SERVER_RACK: c.COLOR_OBJ_SERVER,
-            ObjectType.GIT_REPO: c.COLOR_OBJ_GIT,
-            ObjectType.WIFI_ROUTER: c.COLOR_OBJ_ROUTER,
-            ObjectType.MEETING_ROOM: c.COLOR_OBJ_MEETING_DOOR,
+        sx, sy = camera.world_to_screen(obj.grid_x * ts, obj.grid_y * ts)
+        rect = pygame.Rect(int(sx) + 3, int(sy) + 3, ts - 6, ts - 6)
+        color_map = {
+            ObjectType.DESK: c.COLOR_OBJ_DESK, ObjectType.COFFEE_MACHINE: c.COLOR_OBJ_COFFEE,
+            ObjectType.BUG: c.COLOR_OBJ_BUG, ObjectType.JIRA_TICKET: c.COLOR_OBJ_JIRA,
+            ObjectType.SERVER_RACK: c.COLOR_OBJ_SERVER, ObjectType.GIT_REPO: c.COLOR_OBJ_GIT,
+            ObjectType.WIFI_ROUTER: c.COLOR_OBJ_ROUTER, ObjectType.MEETING_ROOM: c.COLOR_OBJ_MEETING_DOOR,
             ObjectType.LAPTOP: c.COLOR_OBJ_LAPTOP,
         }
-        color = colors.get(obj.obj_type, c.COLOR_OBJ_DESK)
-
+        color = color_map.get(obj.obj_type, c.COLOR_OBJ_DESK)
         if obj.obj_type == ObjectType.BUG:
-            # Small diamond instead of a square so bugs read as "pick-ups".
             cx, cy = rect.center
-            half = rect.width // 2
-            points = [(cx, cy - half), (cx + half, cy), (cx, cy + half), (cx - half, cy)]
-            pygame.draw.polygon(self.surface, color, points)
+            h = rect.width // 2
+            pygame.draw.polygon(self.surface, color, [(cx, cy-h),(cx+h,cy),(cx,cy+h),(cx-h,cy)])
         else:
             pygame.draw.rect(self.surface, color, rect, border_radius=5)
-
         if obj.obj_type == ObjectType.SERVER_RACK:
             pygame.draw.circle(self.surface, c.COLOR_OBJ_SERVER_LIGHT, rect.center, 4)
         elif obj.obj_type == ObjectType.WIFI_ROUTER:
             pygame.draw.circle(self.surface, c.COLOR_OBJ_ROUTER_LIGHT, (rect.centerx, rect.top + 4), 3)
         elif obj.obj_type == ObjectType.COFFEE_MACHINE:
-            pygame.draw.rect(
-                self.surface, c.COLOR_OBJ_COFFEE_ACCENT,
-                pygame.Rect(rect.centerx - 5, rect.bottom - 9, 10, 6),
-            )
-
-        from game.objects import OBJECT_LABELS
+            pygame.draw.rect(self.surface, c.COLOR_OBJ_COFFEE_ACCENT,
+                             pygame.Rect(rect.centerx - 5, rect.bottom - 9, 10, 6))
         label = OBJECT_LABELS.get(obj.obj_type, "")
         if label:
-            label_surf = self.debug_font.render(label, True, (255, 255, 255))
-            label_rect = label_surf.get_rect(center=rect.center)
-            self.surface.blit(label_surf, label_rect)
+            ls = self.debug_font.render(label, True, (255, 255, 255))
+            self.surface.blit(ls, ls.get_rect(center=rect.center))
 
-    def draw_interaction_prompt(self, camera: Camera, grid_x: int, grid_y: int, text: str) -> None:
-        ts = c.TILE_SIZE
-        screen_x, screen_y = camera.world_to_screen(grid_x * ts, grid_y * ts)
+    def draw_interaction_prompt(self, camera: Camera, gx: int, gy: int, text: str) -> None:
+        sx, sy = camera.world_to_screen(gx * c.TILE_SIZE, gy * c.TILE_SIZE)
+        ls = self.debug_font.render(text, True, c.COLOR_INTERACT_PROMPT_TEXT)
+        p = 4
+        bg = pygame.Rect(int(sx) - p, int(sy) - ls.get_height() - p*2, ls.get_width() + p*2, ls.get_height() + p*2)
+        ov = pygame.Surface(bg.size, pygame.SRCALPHA); ov.fill((*c.COLOR_INTERACT_PROMPT_BG, 180))
+        self.surface.blit(ov, bg.topleft)
+        self.surface.blit(ls, (bg.x + p, bg.y + p))
 
-        label_surf = self.debug_font.render(text, True, c.COLOR_INTERACT_PROMPT_TEXT)
-        padding = 4
-        bg_rect = pygame.Rect(
-            int(screen_x) - padding,
-            int(screen_y) - label_surf.get_height() - padding * 2,
-            label_surf.get_width() + padding * 2,
-            label_surf.get_height() + padding * 2,
-        )
-        bg = pygame.Surface(bg_rect.size, pygame.SRCALPHA)
-        bg.fill((*c.COLOR_INTERACT_PROMPT_BG, 180))
-        self.surface.blit(bg, bg_rect.topleft)
-        self.surface.blit(label_surf, (bg_rect.x + padding, bg_rect.y + padding))
-
-    def draw_toasts(self, toasts: list) -> None:
-        """Draws active toast notifications stacked above the bottom edge,
-        most recent at the bottom, fading in/out per `Toast.alpha`.
-        Positions are offset to stay within the game viewport panel.
-        """
-        spacing = 4
-        bottom_margin = 24
-        gx = c.GAME_VIEWPORT_X
-        gw = c.GAME_VIEWPORT_W
-        y = c.SCREEN_HEIGHT - bottom_margin
-
-        for toast in reversed(toasts):
-            text_surf = self.debug_font.render(toast.text, True, c.COLOR_TOAST_TEXT)
-            padding = 8
-            box_w = text_surf.get_width() + padding * 2
-            box_h = text_surf.get_height() + padding * 2
-            x = gx + (gw - box_w) // 2
-            y -= box_h
-
-            alpha = int(220 * toast.alpha)
-            box = pygame.Surface((box_w, box_h), pygame.SRCALPHA)
-            box.fill((*c.COLOR_TOAST_BG, min(200, alpha)))
-            self.surface.blit(box, (x, y))
-
-            text_with_alpha = text_surf.copy()
-            text_with_alpha.set_alpha(alpha)
-            self.surface.blit(text_with_alpha, (x + padding, y + padding))
-
-            y -= spacing
+    # ── HUD elements ──────────────────────────────────────────────────────────
+    def draw_energy_bar(self, ratio: float) -> None:
+        bw, bh = 140, 14
+        x = c.SCREEN_WIDTH - bw - 12
+        y = 12
+        pygame.draw.rect(self.surface, (30, 30, 36), pygame.Rect(x, y, bw, bh), border_radius=4)
+        fw = int(bw * max(0.0, min(1.0, ratio)))
+        if fw > 0:
+            pygame.draw.rect(self.surface, (90, 200, 120) if ratio > 0.3 else (210, 90, 70),
+                             pygame.Rect(x, y, fw, bh), border_radius=4)
+        pygame.draw.rect(self.surface, (10, 10, 14), pygame.Rect(x, y, bw, bh), width=2, border_radius=4)
+        self.draw_text("Energy", x, y + bh + 2, color=(180, 180, 190))
 
     def draw_level_hud(self, progression) -> None:
-        """Draws the level badge and XP bar in the top-right of the game panel."""
-        badge_w, badge_h = 180, 36
-        x = c.SCREEN_WIDTH - badge_w - 10
-        y = 40  # sits just below the energy bar
-
-        bg = pygame.Surface((badge_w, badge_h), pygame.SRCALPHA)
-        bg.fill((*c.COLOR_LEVEL_BG, 210))
+        bw, bh = 180, 36
+        x = c.SCREEN_WIDTH - bw - 10
+        y = 40
+        bg = pygame.Surface((bw, bh), pygame.SRCALPHA); bg.fill((*c.COLOR_LEVEL_BG, 210))
         self.surface.blit(bg, (x, y))
-        pygame.draw.rect(self.surface, c.COLOR_LEVEL_BORDER,
-                         pygame.Rect(x, y, badge_w, badge_h), width=1, border_radius=4)
+        pygame.draw.rect(self.surface, c.COLOR_LEVEL_BORDER, pygame.Rect(x, y, bw, bh), width=1, border_radius=4)
+        self.surface.blit(self.debug_font.render(progression.level.title, True, c.COLOR_LEVEL_TEXT), (x+6, y+4))
+        xp_s = self.debug_font.render(f"{progression.xp} XP", True, c.COLOR_LEVEL_XP_TEXT)
+        self.surface.blit(xp_s, (x + bw - xp_s.get_width() - 6, y+4))
+        bx, by, biw = x+6, y+bh-11, bw-12
+        pygame.draw.rect(self.surface, (30,33,42), pygame.Rect(bx, by, biw, 6), border_radius=3)
+        fw = max(0, int(biw * progression.xp_progress_ratio))
+        if fw:
+            fc = c.COLOR_XP_BAR_FILL2 if progression.xp_progress_ratio > 0.75 else c.COLOR_XP_BAR_FILL
+            pygame.draw.rect(self.surface, fc, pygame.Rect(bx, by, fw, 6), border_radius=3)
 
-        title_surf = self.debug_font.render(
-            progression.level.title, True, c.COLOR_LEVEL_TEXT)
-        self.surface.blit(title_surf, (x + 6, y + 4))
+    def draw_toasts(self, toasts: list) -> None:
+        gx, gw = c.GAME_VIEWPORT_X, c.GAME_VIEWPORT_W
+        y = c.SCREEN_HEIGHT - 24
+        for toast in reversed(toasts):
+            ts = self.debug_font.render(toast.text, True, c.COLOR_TOAST_TEXT)
+            p = 8; bw = ts.get_width() + p*2; bh = ts.get_height() + p*2
+            bx = gx + (gw - bw) // 2
+            y -= bh
+            alpha = int(220 * toast.alpha)
+            box = pygame.Surface((bw, bh), pygame.SRCALPHA); box.fill((*c.COLOR_TOAST_BG, min(200, alpha)))
+            self.surface.blit(box, (bx, y))
+            ta = ts.copy(); ta.set_alpha(alpha)
+            self.surface.blit(ta, (bx + p, y + p))
+            y -= 4
 
-        bar_x = x + 6
-        bar_y = y + badge_h - 11
-        bar_w_inner = badge_w - 12
-        ratio = progression.xp_progress_ratio
-        pygame.draw.rect(self.surface, (30, 33, 42),
-                         pygame.Rect(bar_x, bar_y, bar_w_inner, 6), border_radius=3)
-        if ratio > 0:
-            fill_color = c.COLOR_XP_BAR_FILL2 if ratio > 0.75 else c.COLOR_XP_BAR_FILL
-            pygame.draw.rect(self.surface, fill_color,
-                             pygame.Rect(bar_x, bar_y, max(4, int(bar_w_inner * ratio)), 6),
-                             border_radius=3)
+    # ── Mission HUD ───────────────────────────────────────────────────────────
+    def draw_mission_hud(self, tracker) -> None:
+        if tracker is None or tracker.active is None:
+            return
+        m = tracker.active
+        lh = c.DEBUG_FONT_SIZE + 4
+        pad = 8
+        n_obj = len(m.objectives)
+        hud_h = pad + lh * (2 + n_obj + 1) + (lh if m.time_limit else 0) + pad
+        hud_w = c.MISSION_HUD_W
+        x = c.SCREEN_WIDTH - hud_w - c.MISSION_HUD_MARGIN
+        y = c.SCREEN_HEIGHT - hud_h - c.MISSION_HUD_MARGIN
 
-        xp_surf = self.debug_font.render(f"{progression.xp} XP", True, c.COLOR_LEVEL_XP_TEXT)
-        self.surface.blit(xp_surf, (x + badge_w - xp_surf.get_width() - 6, y + 4))
+        bg = pygame.Surface((hud_w, hud_h), pygame.SRCALPHA); bg.fill((*c.COLOR_MISSION_BG, 220))
+        self.surface.blit(bg, (x, y))
+        border = c.COLOR_MISSION_TIMER_CRIT if m.is_urgent else c.COLOR_MISSION_BORDER
+        pygame.draw.rect(self.surface, border, pygame.Rect(x, y, hud_w, hud_h), width=2, border_radius=6)
 
-    def draw_energy_bar(self, ratio: float) -> None:
-        bar_w, bar_h = 140, 14
-        x = c.SCREEN_WIDTH - bar_w - 12
-        y = 12
+        cy = y + pad
+        self.surface.blit(self.debug_font.render(m.title, True, c.COLOR_MISSION_TITLE), (x+pad, cy)); cy += lh
+        flavour = m.flavour[:30] + "…" if len(m.flavour) > 32 else m.flavour
+        self.surface.blit(self.debug_font.render(flavour, True, c.COLOR_MISSION_FLAVOUR), (x+pad, cy)); cy += lh
 
-        bg_rect = pygame.Rect(x, y, bar_w, bar_h)
-        pygame.draw.rect(self.surface, (30, 30, 36), bg_rect, border_radius=4)
+        for obj in m.objectives:
+            col = c.COLOR_MISSION_OBJ_DONE if obj.done else c.COLOR_MISSION_OBJ_ACTIVE
+            chk = "[x]" if obj.done else "[ ]"
+            self.surface.blit(self.debug_font.render(f"{chk} {obj.label}: {obj.current}/{obj.target}", True, col), (x+pad, cy))
+            bx2, by2, bw2 = x+pad, cy+lh-5, hud_w-pad*2
+            pygame.draw.rect(self.surface, c.COLOR_MISSION_BAR_BG, pygame.Rect(bx2, by2, bw2, 4), border_radius=2)
+            fw = max(0, int(bw2 * obj.progress_ratio))
+            if fw:
+                fc = c.COLOR_MISSION_BAR_DONE if obj.done else c.COLOR_MISSION_BAR_FILL
+                pygame.draw.rect(self.surface, fc, pygame.Rect(bx2, by2, fw, 4), border_radius=2)
+            cy += lh
 
-        fill_w = int(bar_w * max(0.0, min(1.0, ratio)))
-        if fill_w > 0:
-            fill_color = (90, 200, 120) if ratio > 0.3 else (210, 90, 70)
-            fill_rect = pygame.Rect(x, y, fill_w, bar_h)
-            pygame.draw.rect(self.surface, fill_color, fill_rect, border_radius=4)
+        if m.time_limit is not None:
+            rem = m.time_remaining
+            mm, ss = divmod(int(rem), 60)
+            tc = c.COLOR_MISSION_TIMER_CRIT if m.is_urgent else (c.COLOR_MISSION_TIMER_WARN if rem < m.time_limit * 0.5 else c.COLOR_MISSION_TIMER_OK)
+            self.surface.blit(self.debug_font.render(f"Time: {mm:02d}:{ss:02d}", True, tc), (x+pad, cy)); cy += lh
 
-        pygame.draw.rect(self.surface, (10, 10, 14), bg_rect, width=2, border_radius=4)
-        self.draw_text("Energy", x, y + bar_h + 2, color=(180, 180, 190))
+        r = m.rewards
+        parts = []
+        if r.get("salary"):    parts.append(f"+${r['salary']}")
+        if r.get("xp"):        parts.append(f"+{r['xp']}XP")
+        if r.get("reputation"):parts.append(f"+{r['reputation']}Rep")
+        if r.get("git_stars"): parts.append(f"+{r['git_stars']}Stars")
+        self.surface.blit(self.debug_font.render("  ".join(parts), True, c.COLOR_MISSION_REWARD), (x+pad, cy))
+
+    def draw_mission_complete_overlay(self, tracker) -> None:
+        if tracker is None or tracker.just_completed is None:
+            return
+        m = tracker.just_completed
+        alpha = int(180 * tracker.overlay_alpha)
+        failed = tracker.last_failed
+        bg_col  = c.COLOR_FAIL_BG    if failed else c.COLOR_COMPLETE_BG
+        txt_col = c.COLOR_FAIL_TEXT  if failed else c.COLOR_COMPLETE_TEXT
+        header  = "MISSION FAILED"   if failed else "MISSION COMPLETE"
+
+        ov = pygame.Surface((c.SCREEN_WIDTH, c.SCREEN_HEIGHT), pygame.SRCALPHA)
+        ov.fill((*bg_col, min(140, alpha))); self.surface.blit(ov, (0,0))
+
+        bw, bh = 500, 110
+        bx, by = (c.SCREEN_WIDTH - bw) // 2, (c.SCREEN_HEIGHT - bh) // 2
+        ban = pygame.Surface((bw, bh), pygame.SRCALPHA); ban.fill((*bg_col, min(230, alpha+50)))
+        self.surface.blit(ban, (bx, by))
+        pygame.draw.rect(self.surface, txt_col, pygame.Rect(bx, by, bw, bh), width=2, border_radius=8)
+
+        big = pygame.font.SysFont("consolas,courier,monospace", 22)
+        hs = big.render(header, True, txt_col); hs.set_alpha(alpha)
+        self.surface.blit(hs, (bx + (bw - hs.get_width())//2, by+12))
+        ts = self.debug_font.render(m.title, True, (200,215,255)); ts.set_alpha(alpha)
+        self.surface.blit(ts, (bx + (bw - ts.get_width())//2, by+42))
+        if not failed:
+            r = m.rewards
+            parts = []
+            if r.get("salary"):    parts.append(f"+${r['salary']}")
+            if r.get("xp"):        parts.append(f"+{r['xp']} XP")
+            if r.get("reputation"):parts.append(f"+{r['reputation']} Rep")
+            rs = self.debug_font.render("  ".join(parts), True, c.COLOR_MISSION_REWARD); rs.set_alpha(alpha)
+            self.surface.blit(rs, (bx + (bw - rs.get_width())//2, by+68))
+
+    # ── Shop overlay ─────────────────────────────────────────────────────────
+    def draw_shop_overlay(self, economy, progression) -> None:
+        from game.economy import SHOP_ITEMS
+        dim = pygame.Surface((c.SCREEN_WIDTH, c.SCREEN_HEIGHT), pygame.SRCALPHA)
+        dim.fill((0,0,0,160)); self.surface.blit(dim, (0,0))
+
+        sw = 560; ih = 64; sh = 60 + ih*len(SHOP_ITEMS) + 20
+        sx = (c.SCREEN_WIDTH - sw)//2; sy = max(20, (c.SCREEN_HEIGHT - sh)//2)
+        bg = pygame.Surface((sw, sh), pygame.SRCALPHA); bg.fill((*c.COLOR_SHOP_BG, 245))
+        self.surface.blit(bg, (sx, sy))
+        pygame.draw.rect(self.surface, c.COLOR_SHOP_BORDER, pygame.Rect(sx, sy, sw, sh), width=2, border_radius=8)
+
+        self.surface.blit(self.debug_font.render("SHOP", True, c.COLOR_SHOP_TITLE), (sx+14, sy+10))
+        bs = self.debug_font.render(f"Balance: ${economy.salary}", True, c.COLOR_SALARY)
+        self.surface.blit(bs, (sx+sw-bs.get_width()-14, sy+10))
+        hs = self.debug_font.render("[TAB] close  |  [1-6] buy", True, (100,110,140))
+        self.surface.blit(hs, (sx+(sw-hs.get_width())//2, sy+28))
+        pygame.draw.line(self.surface, c.COLOR_SHOP_BORDER, (sx, sy+46), (sx+sw, sy+46))
+
+        for i, item in enumerate(SHOP_ITEMS):
+            iy = sy + 50 + i*ih
+            owned = economy.has_upgrade(item.item_id)
+            affordable = economy.can_afford(item.item_id)
+            rbg = pygame.Surface((sw-4, ih-4), pygame.SRCALPHA)
+            rbg.fill((30,60,40,200) if owned else (*c.COLOR_SHOP_ITEM_BG, 200))
+            self.surface.blit(rbg, (sx+2, iy+2))
+            kc = c.COLOR_SHOP_OWNED if owned else (180,190,210)
+            self.surface.blit(self.debug_font.render(f"[{i+1}]", True, kc), (sx+10, iy+10))
+            nc = c.COLOR_SHOP_OWNED if owned else (200,215,240)
+            self.surface.blit(self.debug_font.render(item.name, True, nc), (sx+46, iy+8))
+            self.surface.blit(self.debug_font.render(item.effect_line, True, (130,140,160)), (sx+46, iy+28))
+            if owned:
+                ss2 = self.debug_font.render("OWNED", True, c.COLOR_SHOP_OWNED)
+                self.surface.blit(ss2, (sx+sw-ss2.get_width()-14, iy+18))
+            else:
+                cc = c.COLOR_SHOP_AFFORD if affordable else c.COLOR_SHOP_CANT
+                cs = self.debug_font.render(f"${item.cost_salary}", True, cc)
+                self.surface.blit(cs, (sx+sw-cs.get_width()-14, iy+18))
+
+    # ── Debug overlay ─────────────────────────────────────────────────────────
+    def draw_text(self, text: str, x: int, y: int, color=None) -> None:
+        self.surface.blit(self.debug_font.render(text, True, color or c.COLOR_DEBUG_TEXT), (x, y))
+
+    def draw_debug_overlay(self, lines: list[str], x_offset: int = 0) -> None:
+        p = 6; lh = c.DEBUG_FONT_SIZE + 2; bw = 320
+        bh = p*2 + lh*len(lines)
+        ov = pygame.Surface((bw, bh), pygame.SRCALPHA); ov.fill((*c.COLOR_DEBUG_BG, 150))
+        self.surface.blit(ov, (8+x_offset, 8))
+        for i, line in enumerate(lines):
+            self.draw_text(line, 8+x_offset+p, 8+p+i*lh)

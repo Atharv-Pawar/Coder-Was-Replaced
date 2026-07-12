@@ -1,13 +1,18 @@
-# Example: Patrol and maintain
-# The robot walks in a straight line, fixing bugs and
-# recharging at the coffee machine automatically.
+# patrol.py
+# The robot walks forward, fixes bugs, refuels at the coffee machine,
+# and turns 180° when it hits a wall — indefinitely.
+#
+# Good starter script for "First Steps" and "Bug Hunt" missions.
 
 while True:
-    if look() == BUG:
+    ahead = look()
+
+    if ahead == BUG:
         fix_bug()
-    elif look() == COFFEE:
+    elif ahead == COFFEE:
         drink_coffee()
-    elif look() == WALL:
+    elif ahead == WALL or ahead == DESK:
         turn_right()
-        turn_right()   # 180 degree turn
-    move()
+        turn_right()      # 180° turn
+    else:
+        move()

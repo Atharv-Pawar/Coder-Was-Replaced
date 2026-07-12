@@ -1,18 +1,15 @@
 # Coder Was Replaced
 
-> You are the last software engineer in a company that has automated
-> everything. Instead of writing code yourself, you program an AI coding
-> bot to survive office life.
+> You are the last software engineer in a company that has automated everything.
+> Instead of writing code yourself, you program an AI coding bot to survive office life.
 
-An original automation/idle game inspired by *The Farmer Was Replaced*,
-*Human Resource Machine*, and *shapez* — built from scratch in Python +
-Pygame, in clean, testable phases.
+An original automation/idle game inspired by *The Farmer Was Replaced* and *Human Resource Machine*, built from scratch in Python + Pygame.
 
 ---
 
-## Status: Phase 5 — Economy ✅
+## Status: Phase 6 — Missions ✅
 
-Phases 1–5 are fully complete and running at 60 FPS on Windows/Linux/macOS.
+Phases 1–6 complete, running at 60 FPS on Windows / Linux / macOS.
 
 ---
 
@@ -23,203 +20,187 @@ pip install -r requirements.txt
 python main.py
 ```
 
-Requires **Python 3.12+** and **pygame-ce ≥ 2.5.0**.
+**Requires:** Python 3.12+ and pygame-ce ≥ 2.5.0
 
 ---
 
 ## Controls
 
-| Key / Input | Action |
+| Key | Action |
 |---|---|
-| Arrow keys / WASD | Move the robot manually (when script is not running) |
-| **E** / Space | Interact with the object you're facing |
-| **F5** / Run button | Run your script |
+| Arrow keys / WASD | Move robot manually |
+| **E** / Space | Interact with object you're facing |
+| **F5** / Run button | Execute your script |
 | **F6** / Stop button | Stop execution |
+| **TAB** | Open / close shop |
+| **1–6** (shop open) | Buy item |
+| `<` `>` buttons | Adjust execution speed |
 | **F3** | Toggle debug overlay |
-| Esc | Quit |
-| `<` `>` buttons | Adjust script execution speed (0.5× / 0.75× / 1× / 2×) |
-| Click in editor | Place text cursor |
+| **Esc** | Quit |
 
 ---
 
 ## Script API
 
-Write Python in the editor. The robot executes each command live, one
-step at a time, with smooth animations.
-
-### Movement
+Write Python in the left panel. The robot executes each command live with smooth animations.
 
 ```python
-move()          # step forward one tile (in the direction the robot is facing)
+# Movement
+move()          # step forward (direction = robot's current facing)
 turn_left()     # rotate 90° counter-clockwise
 turn_right()    # rotate 90° clockwise
+
+# Sensing
+look()          # returns what's directly ahead: EMPTY / WALL / BUG / COFFEE / ...
+
+# Actions (unlocked progressively with XP)
+fix_bug()       # fix the bug you're facing          (+10 XP, +$5)
+drink_coffee()  # use the coffee machine             (+3 XP)
+commit()        # commit to the git repo             (+20 XP, +$3, +1 Star)
+deploy()        # deploy to the server rack          (+40 XP, +$20, +3 Stars)
+run_tests()     # run the test suite                 (+30 XP, +$5)
+answer_email()  # clear the inbox                   (+15 XP, +$8)
+refactor()      # refactor code                     (+25 XP, +$10)
 ```
 
-### Sensing
-
-```python
-result = look()   # returns what's directly in front of the robot
-```
-
-Possible return values: `EMPTY`, `WALL`, `BUG`, `COFFEE`, `DESK`,
-`SERVER`, `JIRA`, `GIT`, `WIFI`, `MEETING`, `LAPTOP`
-
-### Actions
-
-```python
-fix_bug()        # fix the bug you're facing
-drink_coffee()   # use the coffee machine you're facing (+20 energy)
-commit()         # commit to the git repo you're facing
-```
+### World constants
+`EMPTY`  `WALL`  `BUG`  `COFFEE`  `DESK`  `SERVER`  `JIRA`  `GIT`  `WIFI`  `MEETING`  `LAPTOP`
 
 ### Example scripts
 
 ```python
-# Fix every bug and grab coffee on the way
+# Patrol loop — fixes bugs and refuels automatically
 while True:
     if look() == BUG:
         fix_bug()
     elif look() == COFFEE:
         drink_coffee()
-    move()
+    elif look() == WALL:
+        turn_right()
+    else:
+        move()
 ```
 
 ```python
-# Sweep every tile in a grid pattern
-for row in range(13):
-    for col in range(24):
+# Grid sweep — covers every tile systematically
+for row in range(12):
+    for col in range(22):
         if look() == BUG:
             fix_bug()
-        move()
-    turn_right()
-    move()
-    turn_right()
+        if col < 21:
+            move()
+    if row < 11:
+        if row % 2 == 0:
+            turn_right(); move(); turn_right()
+        else:
+            turn_left(); move(); turn_left()
 ```
 
-Safe Python subset is supported: `for`, `while`, `if/elif/else`, `def`,
-`range()`, `len()`, `list`, `int`, `str`, `bool`, `min`, `max`, `abs`,
-`enumerate`, `zip`, and more. No file I/O, no imports, no `__builtins__`
-escape — the sandbox is locked down.
+---
+
+## Unlock system
+
+Functions are gated behind XP thresholds earned by doing real work:
+
+| XP | Unlocks | Level |
+|---|---|---|
+| 0 | `move` `turn_left` `turn_right` `look` | Intern |
+| 50 | `fix_bug` `drink_coffee` | Junior Developer |
+| 200 | `commit` | Developer |
+| 500 | `deploy` `answer_email` | Senior Dev |
+| 1 000 | `run_tests` `build_project` | Tech Lead |
+| 2 000 | `refactor` `scan` | Architect |
+| 4 000 | `spawn_worker` `use_ai` | Eng Manager |
+| 8 000 | `docker_build` `optimize` | CTO |
+| 15 000 | `train_model` `kubernetes_scale` | Fully Automated |
+
+---
+
+## Economy & Shop
+
+Earn five currencies through scripted actions:
+
+| Currency | Earned by |
+|---|---|
+| **$ Salary** | Passive ticks (level-scaled) + task bonuses |
+| **Rep** | Fixing bugs, deploying, emails |
+| **Stars** | Committing and deploying |
+| **Coffee** | `drink_coffee()` calls |
+| **CPU Credits** | `deploy()`, `run_tests()`, `refactor()` |
+
+Spend salary in the **Shop (TAB)**:
+
+| Upgrade | Cost | Effect |
+|---|---|---|
+| Better Coffee Machine | $50 | +40 energy per coffee (was 20) |
+| Standing Desk | $120 | Robot moves 25% faster |
+| Mechanical Keyboard | $250 | Script executes 25% faster |
+| AI Code Assistant | $600 | `look()` sees 2 tiles ahead |
+
+---
+
+## Missions
+
+Structured objectives that tie everything together. Active mission shown bottom-right of the game view. Progress auto-updates as your script runs.
+
+**10 missions across 3 tiers:**
+
+| Mission | Objectives | Timed? |
+|---|---|---|
+| First Steps | Move 20 tiles | No |
+| Coffee Run | Drink coffee ×2 | No |
+| Bug Hunt | Fix 3 bugs | No |
+| Commit Streak | Git commit ×3 | No |
+| Debug Session | Fix 5 bugs + commit | No |
+| Inbox Zero | Answer 3 emails | No |
+| Monday Standup | 3 emails + stay active | **75s** |
+| Deploy Day | Fix 2 + commit 2 + deploy | No |
+| Deadline Crunch | Fix 5 bugs + deploy | **120s** |
+| Sprint Complete | Fix 4 + commit 3 + test + deploy | No |
+
+Missions cycle with targets scaling +50% per full cycle. Completing earns XP, salary, reputation, and git stars. Failing a timed mission costs 3 Rep.
 
 ---
 
 ## Project structure
 
 ```
-Coder-Was-Replaced/
-├── main.py                    # Entry point — run this
-│
-├── engine/                    # Low-level systems (no game content)
-│   ├── game.py                # Main loop, fixed timestep, top-level wiring
-│   ├── renderer.py            # Window, logical surface, all draw calls
-│   ├── camera.py              # Smoothed camera with split-screen viewport offset
-│   ├── tilemap.py             # Grid map + collision (placeholder; .tmx-ready)
-│   ├── animation.py           # Tweening / Vec2Tween / easing helpers
-│   ├── input.py               # Keyboard + mouse event routing
-│   ├── events.py              # Toast notification queue
-│   ├── scripting.py           # Thread-based Python execution engine + sandbox
-│   └── constants.py           # Every tunable value lives here
-│
-├── game/                      # Game content that sits on top of the engine
-│   ├── player.py              # The AI robot entity + tile-based movement
-│   ├── objects.py             # Office furniture system (desk, coffee, bug, ...)
-│   ├── office.py              # Ties map + objects + robot + camera together
-│   └── editor.py              # Split-screen code editor (syntax highlight, cursor, ...)
-│
-├── assets/                    # Sprites, tiles, UI, fonts, sounds, music (Phase 9)
-├── levels/                    # Real .tmx maps via pytmx (Phase 8)
-├── scripts/                   # Saved player scripts (Phase 4+)
-├── data/                      # JSON config for items / upgrades (Phase 4+)
-└── tests/                     # Unit tests
+CWR/
+├── main.py
+├── engine/
+│   ├── constants.py     all tunable values
+│   ├── game.py          main loop + wiring
+│   ├── renderer.py      all draw calls
+│   ├── camera.py        smoothed camera, split-screen offset
+│   ├── tilemap.py       grid map + collision
+│   ├── animation.py     Vec2Tween easing
+│   ├── input.py         keyboard/mouse
+│   ├── events.py        toast notification queue
+│   └── scripting.py     thread-based Python execution engine
+├── game/
+│   ├── player.py        robot entity
+│   ├── objects.py       9 office object types
+│   ├── office.py        tilemap + objects + camera
+│   ├── editor.py        split-screen code editor
+│   ├── progression.py   XP, levels, unlock registry
+│   ├── economy.py       currencies, passive income, shop
+│   └── missions.py      10-mission catalog + tracker
+├── scripts/             example scripts
+└── data/                future JSON config
 ```
-
-### Key files by size (Phase 3 baseline)
-
-| File | Lines | Purpose |
-|---|---|---|
-| `game/editor.py` | 524 | Code editor UI |
-| `engine/scripting.py` | 371 | Thread-based execution engine |
-| `engine/renderer.py` | 244 | All rendering and draw calls |
-| `game/objects.py` | 163 | Office object system |
-| `engine/constants.py` | 157 | All tunable values |
-| **Total** | **~2,300** | across 16 Python files |
-
----
-
-## Architecture highlights
-
-### Split-screen layout
-
-```
-┌──────────────────────┬─────────────────────────────────┐
-│   SCRIPT EDITOR      │                                 │
-│   490 px             │   GAME WORLD  790 px            │
-│                      │                                 │
-│  [Run F5] [Stop F6]  │   tile map + objects + robot    │
-│  1 │ while True:     │   camera follows robot          │
-│  2 │     if look()   │   energy bar + toast HUD        │
-│  3 │         fix_bug │                                 │
-│  ► │ ← executing     │                                 │
-│    │                 │                                 │
-│  Status / error bar  │                                 │
-└──────────────────────┴─────────────────────────────────┘
-```
-
-### Script execution model
-
-The script runs in a **background thread**. Each API call (`move()`,
-`look()`, etc.) posts a command to the main thread and **blocks** until
-the animation finishes. This means:
-
-- The game loop never freezes (script and rendering are decoupled)
-- Step-by-step visual execution is automatic — no coroutines or manual
-  yielding needed in player code
-- Stop is instant: a threading.Event raises `ScriptStopped` at the next
-  command boundary
-- `sys.settrace()` tracks the currently-executing source line with zero
-  overhead, enabling live line highlighting in the editor
-
-### Collision model
-
-`Office.is_walkable(x, y)` combines tilemap walls **and** solid objects
-(desks, servers, etc.) into one callable. The robot's `try_move()` and
-the scripting engine both go through this single function, so map and
-object collision are always consistent.
 
 ---
 
 ## Roadmap
 
-| Phase | What ships | Status |
+| Phase | Focus | Status |
 |---|---|---|
-| 1 | Engine foundation: window, loop, renderer, camera, tilemap, input | ✅ Done |
-| 2 | Office world: objects, collision, interaction, energy bar, toasts | ✅ Done |
-| 3 | Python scripting engine: editor, syntax highlighting, step execution | ✅ Done |
-| 4 | Unlock system: XP gating, level ladder, progress panel, new actions | ✅ Done |
-| 5 | Economy: salary, reputation, git stars, compute credits, shop | ✅ Done |
-
-| 6 | Missions: fix bugs, deploy, close tickets, survive Monday | 🔜 Next |
-| 7 | AI employees: hire interns → architects, assign them scripts | ⏳ |
+| 1 | Engine: window, loop, renderer, camera, tilemap, input | ✅ |
+| 2 | Office world: objects, collision, interaction, HUD | ✅ |
+| 3 | Scripting engine: editor, syntax highlighting, execution | ✅ |
+| 4 | Unlock system: XP gating, level ladder, progress panel | ✅ |
+| 5 | Economy: currencies, passive income, shop, upgrades | ✅ |
+| 6 | Missions: 10 objectives, timed missions, rewards | ✅ |
+| 7 | AI employees: hire interns → architects, assign scripts | 🔜 |
 | 8 | Procedural offices + real Tiled `.tmx` maps | ⏳ |
-| 9 | Steam polish: audio, achievements, settings, controller, packaging | ⏳ |
-
----
-
-## Design philosophy
-
-Built **one phase at a time**, each fully playable before the next
-begins — the way a small indie studio would build it. Engine code
-(`engine/`) is kept strictly independent of game content (`game/`) so
-systems are swappable without cascading changes:
-
-- The placeholder tilemap can be replaced by real `.tmx` files by
-  changing only `load_office_map()` — the renderer and camera are
-  unchanged.
-- The placeholder colored-rectangle art can be replaced by sprite sheets
-  by swapping drawing calls in `renderer.py` — no gameplay logic changes.
-- The scripting sandbox (`scripting.py`) is the only file that knows
-  which API functions exist; adding a new command (`deploy()`, etc.)
-  requires a change in exactly two places there, nothing else.
-
-Type hints, docstrings, and consistent naming throughout. Suitable for
-GitHub portfolio, resume showcase, and eventual Steam release.
+| 9 | Polish: audio, achievements, settings, packaging | ⏳ |
