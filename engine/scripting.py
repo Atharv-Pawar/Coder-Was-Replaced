@@ -36,9 +36,9 @@ class ScriptStopped(BaseException):
 
 class ScriptEngine:
     def __init__(self, office, event_bus, progression=None,
-                 economy=None, mission_tracker=None):
+                 economy=None, mission_tracker=None, robot=None):
         self._office          = office
-        self._robot           = office.robot
+        self._robot           = robot if robot is not None else office.robot
         self._event_bus       = event_bus
         self._progression     = progression
         self._economy         = economy

@@ -107,3 +107,38 @@
 - Smooth tile-to-tile movement with ease-out-quad tween
 - Exponential-smoothing camera, bounded to map
 - Arrow keys / WASD movement; F3 debug overlay; Esc quit
+
+---
+
+## Phase 7 — AI Employees ✅
+
+**New files**
+- `game/employees.py` — `EmployeeTier`, `Employee`, `EmployeeManager`; 4 tiers; pre-written role scripts; hire/fire lifecycle
+
+**Changed files**
+- `engine/scripting.py` — added `robot=None` parameter; each `ScriptEngine` now binds to the robot passed in, defaulting to `office.robot` — this is the key change that gives each employee its own independently-driven robot
+- `engine/input.py` — `hire_panel_pressed()` (H key), `fire_index_pressed()` (F1-F4)
+- `engine/constants.py` — `MAX_EMPLOYEES=6`, `BUG_RESPAWN_INTERVAL`, `BUG_MAX_COUNT`, employee HUD geometry, hire panel color palette
+- `engine/renderer.py` — `draw_employees()` (robots with tier colours + facing arrow + label), `draw_employee_hud()` (status strip top-left of game panel), `draw_hire_panel()` (full-screen overlay)
+- `engine/game.py` — instantiates `EmployeeManager`; H key hire panel; 1-4 hire, F1-F4 fire; `employees.update(dt)` in loop; passes manager to `office.draw()` and `draw_employee_hud()`
+- `game/office.py` — `draw(renderer, employee_manager=None)` renders employees inside world clip; bug respawner: every `BUG_RESPAWN_INTERVAL` seconds spawns a new bug if count < `BUG_MAX_COUNT`
+
+**Four employee tiers**
+
+| Key | Tier | Cost | Min Level | Role script behaviour |
+|---|---|---|---|---|
+| 1 | Intern | $100 | Intern | Patrols, fixes bugs, bounces off walls |
+| 2 | Junior Dev | $350 | Junior Dev | + commits to git, drinks coffee |
+| 3 | Senior Dev | $900 | Developer | + deploys, runs tests every 20 steps |
+| 4 | Architect | $2,500 | Senior Dev | + refactors, alternates commit/refactor |
+
+**Threading model**
+Every employee runs its own `ScriptEngine` in its own daemon thread. The threading model is identical to the player's scripting engine — script thread blocks on `_cmd_done`, main thread dispatches and signals. Up to `MAX_EMPLOYEES=6` threads run simultaneously alongside the player's thread, all sharing the same office state safely under CPython's GIL.
+
+**Shared economy/progression/missions**
+Employee XP, salary, reputation, git stars, and compute credits all flow into the same pools as the player. Their `fix_bug()`/`commit()`/`deploy()` calls advance the active mission's objectives. This means hiring good employees directly accelerates every game system at once.
+
+**Controls added**
+- **H** — open/close hire panel
+- **1-4** (hire panel open) — hire that tier
+- **F1-F4** (hire panel open) — fire employee 0-3

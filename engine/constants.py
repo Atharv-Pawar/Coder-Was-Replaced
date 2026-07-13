@@ -155,3 +155,31 @@ COLOR_COMPLETE_BG         = (20, 50, 30)
 COLOR_COMPLETE_TEXT       = (100, 255, 150)
 COLOR_FAIL_BG             = (50, 20, 20)
 COLOR_FAIL_TEXT           = (255, 100, 80)
+
+# ----------------------------------------------------------------------------
+# AI Employees (Phase 7)
+# ----------------------------------------------------------------------------
+MAX_EMPLOYEES = 6           # max simultaneous employees
+
+# Bug respawner
+BUG_RESPAWN_INTERVAL = 18.0   # seconds between new bug spawns
+BUG_MAX_COUNT        = 5      # max bugs alive at once
+
+# Employee HUD (top-left of game panel, below any debug overlay)
+EMPLOYEE_HUD_X      = 8       # relative to GAME_VIEWPORT_X
+EMPLOYEE_HUD_Y      = 8
+EMPLOYEE_HUD_ROW_H  = 22
+
+# Hire panel
+COLOR_HIRE_BG       = (18, 20, 28)
+COLOR_HIRE_BORDER   = (80, 100, 160)
+COLOR_HIRE_TITLE    = (200, 220, 255)
+COLOR_HIRE_ITEM_BG  = (28, 32, 44)
+COLOR_HIRE_OWNED    = (60, 180, 100)
+COLOR_HIRE_LOCKED   = (80, 85, 100)
+COLOR_HIRE_COST     = (255, 215, 80)
+COLOR_HIRE_AFFORD   = (100, 215, 140)
+COLOR_HIRE_CANT     = (180, 80, 70)
+COLOR_HIRE_STATUS_RUN  = (80, 200, 120)
+COLOR_HIRE_STATUS_IDLE = (160, 160, 180)
+COLOR_HIRE_STATUS_ERR  = (210, 80, 80)

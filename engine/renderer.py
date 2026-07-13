@@ -237,6 +237,132 @@ class Renderer:
             rs = self.debug_font.render("  ".join(parts), True, c.COLOR_MISSION_REWARD); rs.set_alpha(alpha)
             self.surface.blit(rs, (bx + (bw - rs.get_width())//2, by+68))
 
+    # ── Employee rendering ────────────────────────────────────────────────────
+    def draw_employees(self, manager, camera) -> None:
+        """Draw all employee robots on the map (inside world-draw clip)."""
+        if manager is None:
+            return
+        ts = c.TILE_SIZE
+        for emp in manager.employees:
+            wx, wy = emp.robot.world_pixel_pos
+            sx, sy = camera.world_to_screen(wx + 3, wy + 3)
+            size = ts - 6
+            rect = pygame.Rect(int(sx), int(sy), size, size)
+            pygame.draw.rect(self.surface, emp.tier.color, rect, border_radius=4)
+            pygame.draw.rect(self.surface, emp.tier.outline, rect, width=2, border_radius=4)
+            cx, cy2 = rect.center
+            dx, dy  = emp.robot.facing
+            tip   = (cx + dx*size*0.38,  cy2 + dy*size*0.38)
+            left  = (cx - dy*size*0.18 - dx*size*0.08, cy2 + dx*size*0.18 - dy*size*0.08)
+            right = (cx + dy*size*0.18 - dx*size*0.08, cy2 - dx*size*0.18 - dy*size*0.08)
+            pygame.draw.polygon(self.surface, emp.tier.outline, [tip, left, right])
+            ls = self.debug_font.render(emp.tier.label, True, (255, 255, 255))
+            self.surface.blit(ls, (rect.x + 2, rect.y + 1))
+
+    def draw_employee_hud(self, manager) -> None:
+        """Compact status strip in the top-left of the game panel."""
+        if manager is None or manager.count == 0:
+            return
+        gx  = c.GAME_VIEWPORT_X + c.EMPLOYEE_HUD_X
+        gy  = c.EMPLOYEE_HUD_Y
+        lh  = c.EMPLOYEE_HUD_ROW_H
+        pad = 6
+        bw  = 220
+        bh  = pad + lh * manager.count + pad
+
+        bg = pygame.Surface((bw, bh), pygame.SRCALPHA)
+        bg.fill((16, 18, 26, 210))
+        self.surface.blit(bg, (gx, gy))
+        pygame.draw.rect(self.surface, (50, 60, 90),
+                         pygame.Rect(gx, gy, bw, bh), width=1, border_radius=4)
+
+        for i, emp in enumerate(manager.employees):
+            y = gy + pad + i * lh
+            pygame.draw.circle(self.surface, emp.tier.color, (gx + pad + 5, y + lh//2), 5)
+            sc = (c.COLOR_HIRE_STATUS_RUN if emp.status == "running"
+                  else c.COLOR_HIRE_STATUS_ERR if emp.status == "error"
+                  else c.COLOR_HIRE_STATUS_IDLE)
+            ns = self.debug_font.render(f"{emp.tier.title}  [{emp.status}]", True, sc)
+            self.surface.blit(ns, (gx + pad + 14, y + (lh - ns.get_height())//2))
+
+    def draw_hire_panel(self, manager, economy, progression) -> None:
+        """Full-screen hire overlay ([H] key)."""
+        from game.employees import TIERS
+        dim = pygame.Surface((c.SCREEN_WIDTH, c.SCREEN_HEIGHT), pygame.SRCALPHA)
+        dim.fill((0, 0, 0, 160))
+        self.surface.blit(dim, (0, 0))
+
+        ih = 72; header_h = 60; footer_h = 30
+        pw = 580; ph = header_h + ih * len(TIERS) + footer_h + 10
+        px = (c.SCREEN_WIDTH - pw) // 2
+        py = max(20, (c.SCREEN_HEIGHT - ph) // 2)
+
+        bg = pygame.Surface((pw, ph), pygame.SRCALPHA); bg.fill((*c.COLOR_HIRE_BG, 245))
+        self.surface.blit(bg, (px, py))
+        pygame.draw.rect(self.surface, c.COLOR_HIRE_BORDER,
+                         pygame.Rect(px, py, pw, ph), width=2, border_radius=8)
+
+        ts2 = self.debug_font.render("HIRE STAFF", True, c.COLOR_HIRE_TITLE)
+        self.surface.blit(ts2, (px + 14, py + 10))
+        bs = self.debug_font.render(
+            f"Balance: ${economy.salary}  |  Staff: {manager.count}/{c.MAX_EMPLOYEES}",
+            True, c.COLOR_HIRE_COST)
+        self.surface.blit(bs, (px + pw - bs.get_width() - 14, py + 10))
+        hs = self.debug_font.render("[H] close   [1-4] hire", True, (100, 110, 140))
+        self.surface.blit(hs, (px + (pw - hs.get_width())//2, py + 32))
+        pygame.draw.line(self.surface, c.COLOR_HIRE_BORDER,
+                         (px, py + header_h - 2), (px + pw, py + header_h - 2))
+
+        cbt   = manager.count_by_tier
+        avail = {t.tier_id for t in manager.available_tiers()}
+
+        for i, tier in enumerate(TIERS):
+            iy     = py + header_h + i * ih
+            owned  = cbt.get(tier.tier_id, 0)
+            locked = tier.tier_id not in avail
+            full   = manager.count >= c.MAX_EMPLOYEES
+            afford = economy.salary >= tier.cost and not locked and not full
+
+            rbg = pygame.Surface((pw - 4, ih - 4), pygame.SRCALPHA)
+            rbg.fill((*c.COLOR_HIRE_ITEM_BG, 200))
+            self.surface.blit(rbg, (px + 2, iy + 2))
+
+            sw_y = iy + (ih - 30)//2
+            pygame.draw.rect(self.surface, tier.color,   pygame.Rect(px+10, sw_y, 24, 30), border_radius=4)
+            pygame.draw.rect(self.surface, tier.outline, pygame.Rect(px+10, sw_y, 24, 30), width=2, border_radius=4)
+            lbl = self.debug_font.render(tier.label, True, (255,255,255))
+            self.surface.blit(lbl, (px+10+(24-lbl.get_width())//2, sw_y+(30-lbl.get_height())//2))
+
+            kc = (100,110,130) if locked else (180,190,210)
+            self.surface.blit(self.debug_font.render(f"[{i+1}]", True, kc), (px+40, iy+10))
+
+            tc = c.COLOR_HIRE_LOCKED if locked else (200,215,240)
+            self.surface.blit(self.debug_font.render(tier.title,   True, tc),           (px+70, iy+8))
+            self.surface.blit(self.debug_font.render(tier.tagline, True, (120,130,155)),(px+70, iy+28))
+            if owned:
+                os2 = self.debug_font.render(f"Hired: {owned}", True, c.COLOR_HIRE_OWNED)
+                self.surface.blit(os2, (px+70, iy+48))
+
+            right_x = px + pw - 14
+            if locked:
+                from game.progression import LEVELS
+                need = LEVELS[tier.min_level].title if tier.min_level < len(LEVELS) else "???"
+                rs2 = self.debug_font.render(f"Needs: {need}", True, c.COLOR_HIRE_LOCKED)
+                self.surface.blit(rs2, (right_x - rs2.get_width(), iy + ih//2 - 8))
+            elif full:
+                fs2 = self.debug_font.render("Office full", True, c.COLOR_HIRE_LOCKED)
+                self.surface.blit(fs2, (right_x - fs2.get_width(), iy + ih//2 - 8))
+            else:
+                cc2 = c.COLOR_HIRE_AFFORD if afford else c.COLOR_HIRE_CANT
+                cs2 = self.debug_font.render(f"${tier.cost}", True, cc2)
+                self.surface.blit(cs2, (right_x - cs2.get_width(), iy + ih//2 - 8))
+
+        fy2  = py + header_h + ih * len(TIERS) + 6
+        foot = self.debug_font.render(
+            "Employees run automatically and share XP, salary, and missions.",
+            True, (90, 100, 130))
+        self.surface.blit(foot, (px + (pw - foot.get_width())//2, fy2))
+
     # ── Shop overlay ─────────────────────────────────────────────────────────
     def draw_shop_overlay(self, economy, progression) -> None:
         from game.economy import SHOP_ITEMS

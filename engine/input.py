@@ -49,6 +49,16 @@ class InputManager:
     def shop_toggle_pressed(self) -> bool:
         return self.was_pressed(pygame.K_TAB)
 
+    def hire_panel_pressed(self) -> bool:
+        return self.was_pressed(pygame.K_h)
+
+    def fire_index_pressed(self) -> int | None:
+        """F1-F4 fires employee 0-3 when the hire panel is open."""
+        for i, key in enumerate([pygame.K_F1, pygame.K_F2, pygame.K_F3, pygame.K_F4]):
+            if self.was_pressed(key):
+                return i
+        return None
+
     def buy_item_index(self) -> int | None:
         for i, key in enumerate([pygame.K_1, pygame.K_2, pygame.K_3,
                                   pygame.K_4, pygame.K_5, pygame.K_6,
