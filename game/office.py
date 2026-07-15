@@ -6,16 +6,20 @@ from engine.camera import Camera
 from engine.events import EventBus
 from engine.input import InputManager
 from engine.renderer import Renderer
-from engine.tilemap import TileMap, load_office_map
+from engine.tilemap import TileMap
 from game.objects import GameObject, ObjectType, make_object
 from game.player import Robot
 
 
 class Office:
     def __init__(self):
-        self.tile_map: TileMap = load_office_map()
-        self.robot = Robot(grid_x=12, grid_y=5)
-        self.objects: list[GameObject] = self._build_objects()
+        # Use procedural generation for all floors (including floor 0)
+        from game.procgen import generate
+        tilemap, objects, spawn = generate(floor_num=0)
+
+        self.tile_map: TileMap         = tilemap
+        self.objects: list[GameObject] = objects
+        self.robot = Robot(grid_x=spawn[0], grid_y=spawn[1])
         self.camera = Camera(
             viewport_width=c.GAME_VIEWPORT_W,
             viewport_height=c.GAME_VIEWPORT_H,
@@ -24,35 +28,21 @@ class Office:
         self.camera.set_bounds(self.tile_map.pixel_width, self.tile_map.pixel_height)
         self.camera.snap_to(*self.robot.center_pixel_pos)
 
-        # Bug respawner — keeps the office populated for employees
+        # Bug respawner
         self._respawn_timer: float = 0.0
-        # Extra robots (employees) registered here so walkability + draw work
         self._extra_robots: list[Robot] = []
 
-    def register_employee_robot(self, robot: Robot) -> None:
-        if robot not in self._extra_robots:
-            self._extra_robots.append(robot)
-
-    def unregister_employee_robot(self, robot: Robot) -> None:
-        self._extra_robots = [r for r in self._extra_robots if r is not robot]
-
-    def _build_objects(self) -> list[GameObject]:
-        objs: list[GameObject] = []
-        for row_y in (2, 4, 12):
-            for col_x in (2, 3, 4, 14, 15, 16):
-                objs.append(make_object(ObjectType.DESK, col_x, row_y))
-        objs.append(make_object(ObjectType.LAPTOP, 2, 1))
-        objs.append(make_object(ObjectType.LAPTOP, 14, 1))
-        objs.append(make_object(ObjectType.COFFEE_MACHINE, 9, 6))
-        objs.append(make_object(ObjectType.BUG, 7, 3))
-        objs.append(make_object(ObjectType.BUG, 18, 3))
-        objs.append(make_object(ObjectType.JIRA_TICKET, 21, 2))
-        objs.append(make_object(ObjectType.SERVER_RACK, 23, 6))
-        objs.append(make_object(ObjectType.WIFI_ROUTER, 23, 5))
-        objs.append(make_object(ObjectType.GIT_REPO, 23, 7))
-        objs.append(make_object(ObjectType.MEETING_ROOM, 10, 7))
-        objs.append(make_object(ObjectType.MEETING_ROOM, 20, 7))
-        return objs
+    def load_generated(self, tilemap: TileMap, objects: list,
+                        spawn: tuple[int, int]) -> None:
+        """Hot-swap the office layout. Called by FloorManager on floor advance."""
+        self.tile_map = tilemap
+        self.objects  = list(objects)
+        self.robot.grid_x, self.robot.grid_y = spawn
+        self.robot.facing = (0, 1)
+        self.robot._tween = None
+        self._respawn_timer = 0.0
+        self.camera.set_bounds(tilemap.pixel_width, tilemap.pixel_height)
+        self.camera.snap_to(*self.robot.center_pixel_pos)
 
     def object_at(self, gx: int, gy: int) -> GameObject | None:
         for obj in self.objects:

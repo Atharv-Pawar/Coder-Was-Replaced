@@ -142,3 +142,42 @@ Employee XP, salary, reputation, git stars, and compute credits all flow into th
 - **H** — open/close hire panel
 - **1-4** (hire panel open) — hire that tier
 - **F1-F4** (hire panel open) — fire employee 0-3
+
+---
+
+## Phase 8 — Procedural Offices ✅
+
+**New files**
+- `game/procgen.py` — `generate(floor_num, seed)` builds a fresh `TileMap` + object list; rooms, desk rows, infra cluster, bug scatter; deterministic with same seed; 5 floor configs scaling from 26×15 to 58×30 tiles
+- `game/floor_manager.py` — `FloorManager` tracks current floor, checks XP unlock thresholds, hot-swaps the office on advance, drives transition overlay timer
+- `levels/README.md` — guide for adding real Tiled `.tmx` maps in Phase 9
+
+**Changed files**
+- `game/office.py` — `__init__` now calls `generate(floor_num=0)` instead of the old hardcoded placeholder; `load_generated(tilemap, objects, spawn)` hot-swaps layout in-place; removed `_build_objects()`
+- `engine/renderer.py` — `draw_floor_transition()` full-screen dark overlay with floor number, name, and size; `draw_floor_hud()` bottom-of-game-panel strip showing current floor name + "[N] Next Floor" hint when advance is available
+- `engine/game.py` — instantiates `FloorManager`; **N** key calls `floors.advance()`; calls `floors.update(dt)` and all new draw methods
+- `engine/input.py` — `advance_floor_pressed()` → `K_n`
+- `engine/constants.py` — `COLOR_FLOOR_TRANSITION_*`, `COLOR_FLOOR_ADVANCE_HINT`
+
+**Procedural generation algorithm**
+1. Checkerboard floor fill
+2. Outer wall border
+3. N meeting rooms (random position/size, no overlap, each with a doorway)
+4. Desk rows scattered in open space
+5. Infra cluster (Server, Git, WiFi) in the top-right corner
+6. Coffee machine, Laptop, Jira ticket placed near centre/entrance
+7. N bugs scattered on random walkable tiles
+8. Player spawn: first clear tile in the top-left quadrant
+
+**Five floors**
+
+| Floor | Name | Size | Rooms | Bugs | Unlock |
+|---|---|---|---|---|---|
+| 0 | Basement Startup | 26×15 | 2 | 2 | Always |
+| 1 | Open Plan Office | 34×18 | 3 | 3 | Junior Dev |
+| 2 | Corporate Floor | 42×22 | 4 | 4 | Developer |
+| 3 | Executive Suite | 50×26 | 5 | 5 | Senior Dev |
+| 4 | Penthouse HQ | 58×30 | 6 | 6 | Tech Lead |
+
+**Controls added**
+- **N** — advance to the next floor (when progression level is high enough)

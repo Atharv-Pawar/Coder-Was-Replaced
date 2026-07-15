@@ -402,6 +402,65 @@ class Renderer:
                 cs = self.debug_font.render(f"${item.cost_salary}", True, cc)
                 self.surface.blit(cs, (sx+sw-cs.get_width()-14, iy+18))
 
+    # ── Floor transition overlay ──────────────────────────────────────────────
+    def draw_floor_transition(self, floor_manager) -> None:
+        """Full-screen fade overlay shown when advancing floors."""
+        if floor_manager is None or not floor_manager.transition_active:
+            return
+        alpha = int(220 * floor_manager.transition_alpha)
+        if alpha <= 0:
+            return
+
+        ov = pygame.Surface((c.SCREEN_WIDTH, c.SCREEN_HEIGHT), pygame.SRCALPHA)
+        ov.fill((*c.COLOR_FLOOR_TRANSITION_BG, min(210, alpha)))
+        self.surface.blit(ov, (0, 0))
+
+        big_font = pygame.font.SysFont("consolas,courier,monospace", 28)
+        floor_num = floor_manager.current_floor
+        title = big_font.render(
+            f"FLOOR  {floor_num}", True, c.COLOR_FLOOR_TRANSITION_TEXT)
+        title.set_alpha(alpha)
+        tx = (c.SCREEN_WIDTH - title.get_width()) // 2
+        ty = c.SCREEN_HEIGHT // 2 - 40
+        self.surface.blit(title, (tx, ty))
+
+        name_s = big_font.render(
+            floor_manager.transition_name, True, c.COLOR_FLOOR_TRANSITION_TEXT)
+        name_s.set_alpha(alpha)
+        self.surface.blit(name_s, ((c.SCREEN_WIDTH - name_s.get_width()) // 2, ty + 44))
+
+        from game.procgen import get_config
+        cfg   = get_config(floor_num)
+        size_s = self.debug_font.render(
+            f"{cfg['width']} x {cfg['height']} tiles", True, c.COLOR_FLOOR_TRANSITION_SUB)
+        size_s.set_alpha(alpha)
+        self.surface.blit(size_s, ((c.SCREEN_WIDTH - size_s.get_width()) // 2, ty + 90))
+
+    def draw_floor_hud(self, floor_manager) -> None:
+        """Small floor indicator in the bottom-left of the game panel."""
+        if floor_manager is None:
+            return
+        gx = c.GAME_VIEWPORT_X + 8
+        gy = c.SCREEN_HEIGHT - 28
+
+        fn = floor_manager.current_floor
+        from game.procgen import floor_name
+        text = f"Floor {fn}: {floor_name(fn)}"
+
+        if floor_manager.can_advance():
+            text += "  [N] Next Floor"
+            col = c.COLOR_FLOOR_ADVANCE_HINT
+        else:
+            nxt = floor_manager.next_floor_unlock_title
+            if nxt:
+                text += f"  (Next: {nxt})"
+            col = c.COLOR_FLOOR_TRANSITION_SUB
+
+        bg = pygame.Surface((len(text) * 8 + 16, 20), pygame.SRCALPHA)
+        bg.fill((10, 12, 20, 180))
+        self.surface.blit(bg, (gx - 4, gy - 2))
+        self.surface.blit(self.debug_font.render(text, True, col), (gx, gy))
+
     # ── Debug overlay ─────────────────────────────────────────────────────────
     def draw_text(self, text: str, x: int, y: int, color=None) -> None:
         self.surface.blit(self.debug_font.render(text, True, color or c.COLOR_DEBUG_TEXT), (x, y))

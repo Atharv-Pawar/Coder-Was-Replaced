@@ -1,4 +1,4 @@
-"""Main game loop — Phases 1-7."""
+"""Main game loop — Phases 1-8."""
 from __future__ import annotations
 import pygame
 from engine import constants as c
@@ -9,6 +9,7 @@ from engine.scripting import ScriptEngine
 from game.economy import Economy, SHOP_ITEMS
 from game.editor import Editor
 from game.employees import EmployeeManager, TIERS
+from game.floor_manager import FloorManager
 from game.missions import MissionTracker
 from game.office import Office
 from game.progression import Progression
@@ -31,8 +32,11 @@ class Game:
         self.economy     = Economy()
         self.missions    = MissionTracker(self.progression, self.economy, self.events)
         self.employees   = EmployeeManager(
-            self.office, self.events, self.progression,
-            self.economy, self.missions,
+            self.office, self.events,
+            self.progression, self.economy, self.missions,
+        )
+        self.floors      = FloorManager(
+            self.office, self.employees, self.events, self.progression,
         )
         self.editor      = Editor()
         self.script_engine = ScriptEngine(
@@ -40,12 +44,12 @@ class Game:
             progression=self.progression,
             economy=self.economy,
             mission_tracker=self.missions,
-            robot=self.office.robot,        # player robot
+            robot=self.office.robot,
         )
 
-        self._running     = False
-        self._shop_open   = False
-        self._hire_open   = False
+        self._running    = False
+        self._shop_open  = False
+        self._hire_open  = False
         self._fps_samples: list[float] = []
 
     def run(self) -> None:
@@ -68,7 +72,6 @@ class Game:
             if ev.type == pygame.VIDEORESIZE:
                 self.renderer.handle_resize(ev.w, ev.h)
             self.input.process_event(ev)
-            # Only route text/key events to editor when no overlay is blocking
             if not self._hire_open:
                 action = self.editor.handle_event(ev, self.script_engine.is_running)
                 if action == "run":
@@ -78,52 +81,52 @@ class Game:
 
     # ── Update ────────────────────────────────────────────────────────────────
     def _update(self, dt: float) -> None:
-        # ── overlay toggles ───────────────────────────────────────────────────
+        # Overlay toggles
         if self.input.shop_toggle_pressed():
             self._shop_open = not self._shop_open
-            if self._shop_open:
-                self._hire_open = False
+            if self._shop_open: self._hire_open = False
 
         if self.input.hire_panel_pressed():
             self._hire_open = not self._hire_open
-            if self._hire_open:
-                self._shop_open = False
+            if self._hire_open: self._shop_open = False
 
-        # ── shop purchases ────────────────────────────────────────────────────
+        # N key — advance to next floor
+        if self.input.advance_floor_pressed():
+            self.script_engine.stop()
+            self.floors.advance()
+
+        # Shop purchases
         if self._shop_open:
             idx = self.input.buy_item_index()
             if idx is not None and idx < len(SHOP_ITEMS):
                 ok, msg = self.economy.buy(SHOP_ITEMS[idx].item_id, self.events)
-                if not ok:
-                    self.events.notify(msg)
+                if not ok: self.events.notify(msg)
 
-        # ── hire panel ────────────────────────────────────────────────────────
+        # Hire panel
         if self._hire_open:
             idx = self.input.buy_item_index()
             if idx is not None and idx < len(TIERS):
                 ok, msg = self.employees.hire(TIERS[idx].tier_id)
-                if not ok:
-                    self.events.notify(msg)
-            # F1-F4 fire employees
+                if not ok: self.events.notify(msg)
             fire_idx = self.input.fire_index_pressed()
-            if fire_idx is not None:
-                if fire_idx < self.employees.count:
-                    emp_name = self.employees.employees[fire_idx].name
-                    self.employees.fire(fire_idx)
-                    self.events.notify(f"Fired: {emp_name}")
+            if fire_idx is not None and fire_idx < self.employees.count:
+                name = self.employees.employees[fire_idx].name
+                self.employees.fire(fire_idx)
+                self.events.notify(f"Fired: {name}")
 
-        # ── robot + world ─────────────────────────────────────────────────────
+        # Robot + world
         if not self.script_engine.is_running:
             self.office.update(dt, self.input, self.events)
         else:
             self.office.robot.update(dt)
             self.office.camera.update(dt, *self.office.robot.center_pixel_pos)
 
-        # ── all systems ───────────────────────────────────────────────────────
+        # All systems
         self.script_engine.update(dt)
         self.employees.update(dt)
         self.economy.update(dt, self.progression, self.events)
         self.missions.update(dt)
+        self.floors.update(dt)
         self.events.update(dt)
         self.editor.update(dt, self.script_engine, self.progression)
 
@@ -135,24 +138,26 @@ class Game:
     def _draw(self) -> None:
         self.renderer.begin_frame()
 
-        # Left: editor
+        # Left panel: editor
         self.editor.draw(self.renderer.surface, self.script_engine,
                          self.progression, self.economy)
 
-        # Right: world (employees drawn inside world clip)
+        # Right panel: world (employees drawn inside world clip)
         self.office.draw(self.renderer, self.employees)
 
-        # Right-panel HUD overlays (drawn outside clip, over whole surface)
+        # HUD overlays
         self.renderer.draw_energy_bar(self.office.robot.energy_ratio)
         self.renderer.draw_level_hud(self.progression)
         self.renderer.draw_employee_hud(self.employees)
         self.renderer.draw_mission_hud(self.missions)
+        self.renderer.draw_floor_hud(self.floors)
         self.renderer.draw_toasts(self.events.toasts)
 
         if self.input.debug_overlay_visible:
             self._draw_debug()
 
-        # Full-screen overlays last
+        # Full-screen overlays — order matters: transition → mission → hire/shop
+        self.renderer.draw_floor_transition(self.floors)
         self.renderer.draw_mission_complete_overlay(self.missions)
         if self._hire_open:
             self.renderer.draw_hire_panel(self.employees, self.economy, self.progression)
@@ -163,7 +168,8 @@ class Game:
 
     def _draw_debug(self) -> None:
         avg = sum(self._fps_samples) / len(self._fps_samples) if self._fps_samples else 0
-        r, e, m = self.office.robot, self.script_engine, self.missions
+        r, e, m, fl = self.office.robot, self.script_engine, self.missions, self.floors
+        cfg = __import__('game.procgen', fromlist=['get_config']).get_config(fl.current_floor)
         lines = [
             f"FPS: {avg:.1f}",
             f"Tile: ({r.grid_x}, {r.grid_y})  Facing: {r.facing}",
@@ -172,7 +178,7 @@ class Game:
             f"XP: {self.progression.xp}  |  {self.progression.level.title}",
             f"$ {self.economy.salary}  Rep:{self.economy.reputation}  Stars:{self.economy.git_stars}",
             f"Mission: {m.active.title if m.active else 'none'}  Done:{m.total_completed}",
-            f"Staff: {self.employees.count}/{c.MAX_EMPLOYEES}",
-            "F3:debug  F5:run  F6:stop  TAB:shop  H:hire  ESC:quit",
+            f"Floor {fl.current_floor}: {cfg['width']}x{cfg['height']}  Staff:{self.employees.count}",
+            "F3:debug F5:run F6:stop TAB:shop H:hire N:next-floor ESC:quit",
         ]
         self.renderer.draw_debug_overlay(lines, x_offset=c.GAME_VIEWPORT_X)
