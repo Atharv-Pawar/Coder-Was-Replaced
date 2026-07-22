@@ -7,9 +7,9 @@ An original automation/idle game inspired by *The Farmer Was Replaced* and *Huma
 
 ---
 
-## Status: Phase 8 — Procedural Offices ✅
+## Status: Phase 9 — Polish ✅  (COMPLETE)
 
-Phases 1–8 complete, running at 60 FPS on Windows / Linux / macOS.
+Phases 1–9 complete — game is DONE, running at 60 FPS on Windows / Linux / macOS.
 
 ---
 
@@ -203,4 +203,4 @@ CWR/
 | 6 | Missions: 10 objectives, timed missions, rewards | ✅ |
 | 7 | AI employees: hire interns → architects, each with own thread | ✅ |
 | 8 | Procedural offices: 5 floors, deterministic gen, floor HUD | ✅ |
-| 9 | Polish: audio, achievements, settings, packaging | 🔜 Next |
+| 9 | Polish: procedural audio, 12 achievements, save/load, settings | ✅ Done |

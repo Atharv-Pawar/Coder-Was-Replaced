@@ -55,6 +55,16 @@ class InputManager:
     def advance_floor_pressed(self) -> bool:
         return self.was_pressed(pygame.K_n)
 
+    def fullscreen_pressed(self) -> bool:
+        return self.was_pressed(pygame.K_F11)
+
+    def settings_pressed(self) -> bool:
+        return self.was_pressed(pygame.K_s) or self.was_pressed(pygame.K_F9)
+
+    def save_pressed(self) -> bool:
+        return (self.was_pressed(pygame.K_F2) or
+                (self._held.intersection({pygame.KMOD_CTRL}) and self.was_pressed(pygame.K_s)))
+
     def fire_index_pressed(self) -> int | None:
         """F1-F4 fires employee 0-3 when the hire panel is open."""
         for i, key in enumerate([pygame.K_F1, pygame.K_F2, pygame.K_F3, pygame.K_F4]):

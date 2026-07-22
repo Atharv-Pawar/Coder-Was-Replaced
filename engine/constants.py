@@ -165,6 +165,26 @@ COLOR_FLOOR_TRANSITION_SUB  = (100, 130, 180)
 COLOR_FLOOR_ADVANCE_HINT    = (255, 200, 80)
 
 # ----------------------------------------------------------------------------
+# Phase 9 — Polish (achievements, settings, save)
+# ----------------------------------------------------------------------------
+# Achievement popup (top of game panel)
+COLOR_ACH_BG      = (24, 36, 24)
+COLOR_ACH_BORDER  = (80, 200, 100)
+COLOR_ACH_TITLE   = (120, 255, 140)
+COLOR_ACH_DESC    = (160, 200, 165)
+COLOR_ACH_LABEL   = (80, 200, 100)
+
+# Settings overlay
+COLOR_SETTINGS_BG       = (16, 18, 28)
+COLOR_SETTINGS_BORDER   = (70, 80, 130)
+COLOR_SETTINGS_TITLE    = (200, 215, 255)
+COLOR_SETTINGS_LABEL    = (140, 150, 190)
+COLOR_SETTINGS_VALUE    = (255, 215, 80)
+COLOR_SETTINGS_HINT     = (90, 100, 140)
+COLOR_SETTINGS_BAR_BG   = (30, 33, 48)
+COLOR_SETTINGS_BAR_FILL = (80, 140, 220)
+
+# ----------------------------------------------------------------------------
 # AI Employees (Phase 7)
 # ----------------------------------------------------------------------------
 MAX_EMPLOYEES = 6           # max simultaneous employees

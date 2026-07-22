@@ -402,6 +402,124 @@ class Renderer:
                 cs = self.debug_font.render(f"${item.cost_salary}", True, cc)
                 self.surface.blit(cs, (sx+sw-cs.get_width()-14, iy+18))
 
+    def draw_achievement_popup(self, achievement_system) -> None:
+        """Slide-in banner at top of game panel for newly unlocked achievements."""
+        if not achievement_system or not achievement_system.popups:
+            return
+
+        popup = achievement_system.popups[0]
+        alpha = int(255 * popup.alpha)
+        if alpha <= 0:
+            return
+
+        gx  = c.GAME_VIEWPORT_X
+        pw  = 300
+        ph  = 62
+        px  = gx + c.GAME_VIEWPORT_W - pw - 10
+        py  = 10
+
+        bg = pygame.Surface((pw, ph), pygame.SRCALPHA)
+        bg.fill((*c.COLOR_ACH_BG, min(230, alpha)))
+        self.surface.blit(bg, (px, py))
+        pygame.draw.rect(self.surface, c.COLOR_ACH_BORDER,
+                         pygame.Rect(px, py, pw, ph), width=2, border_radius=6)
+
+        # Label
+        lbl = self.debug_font.render("ACHIEVEMENT UNLOCKED", True, c.COLOR_ACH_LABEL)
+        lbl.set_alpha(alpha)
+        self.surface.blit(lbl, (px + 8, py + 6))
+
+        # Title
+        tf = pygame.font.SysFont("consolas,courier,monospace", 17)
+        ts = tf.render(popup.achievement.title, True, c.COLOR_ACH_TITLE)
+        ts.set_alpha(alpha)
+        self.surface.blit(ts, (px + 8, py + 24))
+
+        # Description
+        ds = self.debug_font.render(popup.achievement.description, True, c.COLOR_ACH_DESC)
+        ds.set_alpha(alpha)
+        self.surface.blit(ds, (px + 8, py + 44))
+
+    def draw_settings_overlay(self, settings, save_manager) -> None:
+        """Centered settings panel (S / F9 key)."""
+        dim = pygame.Surface((c.SCREEN_WIDTH, c.SCREEN_HEIGHT), pygame.SRCALPHA)
+        dim.fill((0, 0, 0, 150))
+        self.surface.blit(dim, (0, 0))
+
+        pw, ph = 480, 340
+        px = (c.SCREEN_WIDTH - pw) // 2
+        py = (c.SCREEN_HEIGHT - ph) // 2
+
+        bg = pygame.Surface((pw, ph), pygame.SRCALPHA)
+        bg.fill((*c.COLOR_SETTINGS_BG, 245))
+        self.surface.blit(bg, (px, py))
+        pygame.draw.rect(self.surface, c.COLOR_SETTINGS_BORDER,
+                         pygame.Rect(px, py, pw, ph), width=2, border_radius=8)
+
+        lh  = 28
+        pad = 16
+
+        def _row(label, value, hint, y):
+            self.surface.blit(
+                self.debug_font.render(label, True, c.COLOR_SETTINGS_LABEL),
+                (px + pad, y))
+            self.surface.blit(
+                self.debug_font.render(str(value), True, c.COLOR_SETTINGS_VALUE),
+                (px + 200, y))
+            self.surface.blit(
+                self.debug_font.render(hint, True, c.COLOR_SETTINGS_HINT),
+                (px + 280, y))
+
+        def _bar(ratio, y):
+            bx, bw, bh = px + pad, pw - pad * 2, 8
+            pygame.draw.rect(self.surface, c.COLOR_SETTINGS_BAR_BG,
+                             pygame.Rect(bx, y, bw, bh), border_radius=4)
+            fw = max(0, int(bw * ratio))
+            if fw:
+                pygame.draw.rect(self.surface, c.COLOR_SETTINGS_BAR_FILL,
+                                 pygame.Rect(bx, y, fw, bh), border_radius=4)
+
+        # Title
+        tf = pygame.font.SysFont("consolas,courier,monospace", 20)
+        ts = tf.render("SETTINGS", True, c.COLOR_SETTINGS_TITLE)
+        self.surface.blit(ts, (px + (pw - ts.get_width()) // 2, py + pad))
+        hs = self.debug_font.render("[S / F9] close   [F2] quick-save", True, c.COLOR_SETTINGS_HINT)
+        self.surface.blit(hs, (px + (pw - hs.get_width()) // 2, py + pad + 24))
+        pygame.draw.line(self.surface, c.COLOR_SETTINGS_BORDER,
+                         (px, py + 60), (px + pw, py + 60))
+
+        cy = py + 70
+        _row("Master Volume", f"{int(settings.master_volume * 100)}%", "[Z] − / [X] +", cy)
+        cy += 10; _bar(settings.master_volume, cy); cy += lh
+
+        _row("SFX Volume",    f"{int(settings.sfx_volume * 100)}%",    "[C] − / [V] +", cy)
+        cy += 10; _bar(settings.sfx_volume, cy); cy += lh
+
+        pygame.draw.line(self.surface, c.COLOR_SETTINGS_BORDER,
+                         (px, cy), (px + pw, cy)); cy += 10
+
+        _row("Fullscreen",    "ON" if settings.fullscreen else "OFF",  "[F11] toggle",    cy); cy += lh
+        _row("Debug Overlay", "ON" if settings.show_debug  else "OFF", "[F3] toggle",     cy); cy += lh
+
+        pygame.draw.line(self.surface, c.COLOR_SETTINGS_BORDER,
+                         (px, cy), (px + pw, cy)); cy += 10
+
+        # Save / load info
+        last = save_manager.last_save_str if save_manager else "never"
+        _row("Auto-save",  "every 30s", "[F2] save now", cy); cy += lh
+        _row("Last saved", last, "", cy); cy += lh
+
+        pygame.draw.line(self.surface, c.COLOR_SETTINGS_BORDER,
+                         (px, cy), (px + pw, cy)); cy += 10
+
+        # Achievement progress
+        if hasattr(self, '_ach_count'):
+            pass
+        info = self.debug_font.render(
+            "Close with [S] or [F9]  —  ESC exits the game",
+            True, c.COLOR_SETTINGS_HINT)
+        self.surface.blit(info, (px + (pw - info.get_width()) // 2, py + ph - 28))
+
     # ── Floor transition overlay ──────────────────────────────────────────────
     def draw_floor_transition(self, floor_manager) -> None:
         """Full-screen fade overlay shown when advancing floors."""

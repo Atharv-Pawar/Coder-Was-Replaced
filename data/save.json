@@ -1,0 +1,34 @@
+{
+  "version": 9,
+  "timestamp": 1784699703.039697,
+  "xp": 658,
+  "salary": 319,
+  "reputation": 23,
+  "git_stars": 0,
+  "coffee_count": 127,
+  "compute_credits": 0,
+  "upgrades": [
+    "better_coffee"
+  ],
+  "total_spent": 50,
+  "floor": 0,
+  "max_floor": 0,
+  "missions_completed": 3,
+  "missions_failed": 0,
+  "action_totals": {
+    "move": 1024,
+    "fix_bug": 8,
+    "drink_coffee": 127
+  },
+  "achievements": [
+    "first_steps",
+    "coffee_addict",
+    "bug_squasher"
+  ],
+  "settings": {
+    "master_volume": 0.7,
+    "sfx_volume": 0.8,
+    "fullscreen": false,
+    "show_debug": true
+  }
+}

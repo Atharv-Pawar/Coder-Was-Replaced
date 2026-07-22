@@ -181,3 +181,65 @@ Employee XP, salary, reputation, git stars, and compute credits all flow into th
 
 **Controls added**
 - **N** — advance to the next floor (when progression level is high enough)
+
+---
+
+## Phase 9 — Polish ✅  (FINAL)
+
+**New files**
+- `game/settings.py` — `Settings` dataclass: master/sfx volume, fullscreen, debug, `to_dict()/from_dict()`
+- `engine/sound_manager.py` — procedural audio generated at runtime with numpy + `pygame.sndarray`; 16 distinct sound effects; graceful no-op if numpy unavailable
+- `engine/achievements.py` — 12 achievements with stat tracking, fade-in/fade-out popup banners, XP bonus on unlock, `unlock_from_save()` for restoring without re-firing
+- `engine/save_manager.py` — JSON save to `data/save.json`; saves XP, economy, floor, achievements, action totals, settings; auto-save every 30 s; `last_save_str` property for UI
+
+**Changed files**
+- `engine/renderer.py` — `draw_achievement_popup()` (top-right banner, fades over 4.5 s); `draw_settings_overlay()` (centered panel with volume bars, fullscreen toggle, save info)
+- `engine/input.py` — `fullscreen_pressed()` (F11), `settings_pressed()` (S / F9), `save_pressed()` (F2)
+- `engine/game.py` — full rewrite: wires all 9 systems; window icon (programmatic robot face); F11 fullscreen; volume keys Z/X/C/V; sound triggers via state-delta detection; auto-save; settings overlay; save on quit
+
+**Procedural audio (16 sounds — no asset files needed)**
+
+| Sound | Triggered by |
+|---|---|
+| `click` | key press in editor |
+| `fix_bug` | successful `fix_bug()` |
+| `coffee` | `drink_coffee()` |
+| `commit` | `commit()` |
+| `deploy` | `deploy()` |
+| `run_tests` | `run_tests()` |
+| `answer_email` | `answer_email()` |
+| `refactor` | `refactor()` |
+| `ping` | toast notification |
+| `unlock` | new function unlocked |
+| `mission` | mission complete |
+| `achievement` | achievement unlocked |
+| `floor` | floor advance |
+| `error` | blocked action |
+| `hire` | employee hired |
+| `buy` | shop purchase |
+
+**12 Achievements**
+
+| Achievement | Condition | XP Bonus |
+|---|---|---|
+| First Steps | Move once | +5 |
+| Bug Squasher | Fix 1 bug | +10 |
+| Coffee Addict | Drink 10 coffees | +15 |
+| Git Pusher | First commit | +10 |
+| Ship It! | First deploy | +20 |
+| Exterminator | Fix 50 bugs | +50 |
+| Team Player | Hire 1 employee | +25 |
+| Office Politics | 3 employees active | +40 |
+| Floor Climber | Reach floor 2 | +30 |
+| Speed Demon | Complete timed mission | +35 |
+| Millionaire | Earn $1,000 salary | +60 |
+| Fully Loaded | Own all 4 shop upgrades | +80 |
+
+**Controls added**
+- **S / F9** — settings overlay
+- **Z / X** — master volume −/+
+- **C / V** — SFX volume −/+
+- **F11** — fullscreen toggle
+- **F2** — quick-save
+
+---
